@@ -6,11 +6,13 @@ This repository provides tools for evaluating various foundation models on Earth
 
 ## Setup
 
-To get started, you can install the required dependencies from the `pyproject.toml`:
-
-For this navigate to the root directory of this repository and do:
-
+Navigate into the root directory of this repository and do:
 ```
+conda create -n dofa-pytorch python=3.10 --yes
+conda activate dofa-pytorch
+pip install -U openmim
+pip install torch==2.1.2
+mim install mmcv==2.1.0 mmsegmentation==1.2.2
 pip install -e .
 ```
 

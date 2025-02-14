@@ -4,4 +4,5 @@ num_classes: null
 num_channels: null
 data_path: null
 band_wavelengths: null
+multilabel: null
 

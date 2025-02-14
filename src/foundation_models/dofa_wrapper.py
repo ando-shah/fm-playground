@@ -7,16 +7,16 @@ from .DOFA.models_dwv_seg import vit_base_patch16 as vit_base_patch16_seg
 from .DOFA.models_dwv_seg import vit_large_patch16 as vit_large_patch16_seg
 from mmseg.models.necks import Feature2Pyramid
 from mmseg.models.decode_heads import UPerHead, FCNHead
-from util.misc import resize
 from .lightning_task import LightningTask
 from timm.models.layers import trunc_normal_
-from util.misc import seg_metric, cls_metric
+from ..util.misc import resize, seg_metric, cls_metric
 from torchvision.datasets.utils import download_url
 from peft import LoraConfig, get_peft_model
 
+from .base import LinearHead
+
 
 class DofaClassification(LightningTask):
-
     url = "https://huggingface.co/earthflow/dofa/resolve/main/{}"
 
     def __init__(self, args, model_config, data_config):
@@ -27,27 +27,30 @@ class DofaClassification(LightningTask):
         self.full_finetune = model_config.get("full_finetune", False)
 
         # can only be one of the two
-        assert not (self.lora and self.full_finetune), "Can only use one of LoRA or full finetune bot not both to true"
+        assert not (self.lora and self.full_finetune), (
+            "Can only use one of LoRA or full finetune bot not both to true"
+        )
 
         self.encoder = (
-            vit_base_patch16_cls(num_classes=data_config.num_classes) if model_config.size == "large" \
-                else vit_base_patch16_cls(num_classes=data_config.num_classes)
-            )
-
-        print(self.encoder)
-
+            vit_base_patch16_cls(num_classes=data_config.num_classes)
+            if model_config.size == "large"
+            else vit_base_patch16_cls(num_classes=data_config.num_classes)
+        )
 
         # look for pretrained weights
-        dir = os.getenv("MODEL_WEIGHTS_DIR")
-        filename = model_config.pretrained_path
-        path = os.path.join(dir, filename)
-        if not os.path.exists(path):
-            # download the weights from HF
-            download_url(self.url.format(filename), dir, filename=filename)
+        if model_config.get("pretrained_path", None):
+            path = model_config.pretrained_path
+            if not os.path.exists(path):
+                # download the weights from HF
+                download_url(
+                    self.url.format(os.path.basename(path)),
+                    os.path.dirname(path),
+                    filename=os.path.basename(path),
+                )
 
-        # Load pretrained weights
-        check_point = torch.load(path)
-        self.encoder.load_state_dict(check_point, strict=False)
+            # Load pretrained weights
+            check_point = torch.load(path)
+            self.encoder.load_state_dict(check_point, strict=False)
 
         if self.lora and model_config.lora:
             self.apply_peft(self.encoder, lora_cfg=model_config.lora)
@@ -60,9 +63,12 @@ class DofaClassification(LightningTask):
                 self.freeze(self.encoder)
 
         trunc_normal_(self.encoder.head.weight, std=0.01)
-        self.encoder.head = nn.Sequential(
-            nn.BatchNorm1d(self.encoder.head.in_features, affine=False, eps=1e-6),
-            self.encoder.head,
+        # self.encoder.head = nn.Sequential(
+        #     nn.BatchNorm1d(self.encoder.head.in_features, affine=False, eps=1e-6),
+        #     self.encoder.head,
+        # )
+        self.encoder.head = LinearHead(
+            self.encoder.head.in_features, data_config.num_classes
         )
         self.unfreeze(self.encoder.head)
 
@@ -76,7 +82,9 @@ class DofaClassification(LightningTask):
         self.data_config = data_config
 
     def freeze_non_lora_params(self, encoder):
-        raise NotImplementedError("Not implemented yet: CANNOT freeze non-LoRA parameters")
+        raise NotImplementedError(
+            "Not implemented yet: CANNOT freeze non-LoRA parameters"
+        )
 
     def apply_peft(self, encoder, lora_cfg: dict):
         """
@@ -89,15 +97,18 @@ class DofaClassification(LightningTask):
         peft_config = LoraConfig(
             r=lora_cfg.get("lora_rank", 16),  # Rank of LoRA
             lora_alpha=lora_cfg.get("lora_alpha", 16),  # Scaling factor for LoRA
-            target_modules=cfg.get("lora_target_modules",  "blocks.*.attn.qkv"), #["qkv", "proj"]
-            lora_dropout=lora_cfg.get("lora_dropout", 0.),  # Dropout rate for LoRA
+            target_modules=lora_cfg.get(
+                "lora_target_modules", "blocks.*.attn.qkv"
+            ),  # ["qkv", "proj"]
+            lora_dropout=lora_cfg.get("lora_dropout", 0.0),  # Dropout rate for LoRA
             bias=lora_cfg.get("bias", "none"),
-            task_type=lora_cfg.get("lora_task_type", None)  # Task type (use appropriate type for your model), "SEQ_CLS"
+            task_type=lora_cfg.get(
+                "lora_task_type", None
+            ),  # Task type (use appropriate type for your model), "SEQ_CLS"
         )
 
         # Wrap the encoder with PEFT
         self.encoder = get_peft_model(encoder, peft_config)
-
 
     def loss(self, outputs, labels):
         return self.criterion(outputs[0], labels)
@@ -111,8 +122,22 @@ class DofaClassification(LightningTask):
             # Include LoRA parameters for optimization
             lora_params = [p for n, p in self.encoder.named_parameters() if "lora" in n]
             return list(self.encoder.head.parameters()) + lora_params
-        if self.full_finetune:
+        elif self.full_finetune:
             return list(self.encoder.parameters())
+        elif self.model_config.get("trainable_params", None):
+            trainable_params = self.model_config.trainable_params
+            params_to_optimize = []
+            for name, param in self.encoder.named_parameters():
+                for layer in trainable_params:
+                    if layer in name:
+                        params_to_optimize.append(param)
+
+            if not params_to_optimize:
+                model_params = [name for name, _ in self.encoder.named_parameters()]
+                raise ValueError(
+                    f"No trainable layers found. Check the layer names in the model. Looking at `self.encoder.named_parameters()`, we have found {model_params}"
+                )
+            return params_to_optimize + list(self.encoder.head.parameters())
         else:
             return list(self.encoder.head.parameters())
 
@@ -131,6 +156,8 @@ class DofaClassification(LightningTask):
 
 
 class DofaSegmentation(LightningTask):
+    url = "https://huggingface.co/earthflow/dofa/resolve/main/{}"
+
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
         self.encoder = (
@@ -144,8 +171,18 @@ class DofaSegmentation(LightningTask):
         )
 
         # Load pretrained weights
-        check_point = torch.load(model_config.pretrained_path)
-        self.encoder.load_state_dict(check_point, strict=False)
+        if model_config.get("pretrained_path", None):
+            path = model_config.pretrained_path
+            if not os.path.exists(path):
+                # download the weights from HF
+                download_url(
+                    self.url.format(os.path.basename(path)),
+                    os.path.dirname(path),
+                    filename=os.path.basename(path),
+                )
+
+            check_point = torch.load(model_config.pretrained_path)
+            self.encoder.load_state_dict(check_point, strict=False)
 
         if model_config.freeze_backbone:
             self.freeze(self.encoder)

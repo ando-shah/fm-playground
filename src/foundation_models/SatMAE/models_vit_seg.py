@@ -10,7 +10,7 @@ import math
 import torch
 import torch.nn as nn
 from timm.models.vision_transformer import VisionTransformer
-from util.pos_embed import get_2d_sincos_pos_embed
+from src.util.pos_embed import get_2d_sincos_pos_embed
 
 
 class VisionTransformer(VisionTransformer):

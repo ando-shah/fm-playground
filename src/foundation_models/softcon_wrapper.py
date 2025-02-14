@@ -1,4 +1,3 @@
-from .SoftCON.models.dinov2 import vision_transformer as dinov2_vit
 import torch.nn as nn
 import torch
 import os
@@ -6,45 +5,50 @@ import os
 # use mmsegmentation for upernet+mae
 from mmseg.models.necks import Feature2Pyramid
 from mmseg.models.decode_heads import UPerHead, FCNHead
-from util.misc import resize
 from .lightning_task import LightningTask
 from einops import rearrange
-from util.misc import seg_metric, cls_metric
+from ..util.misc import resize, seg_metric, cls_metric
 from torchvision.datasets.utils import download_url
+
+from .base import LinearHead
 
 
 class SoftConClassification(LightningTask):
+    """SoftCon model for classification."""
 
     url = "https://huggingface.co/wangyi111/softcon/resolve/main/{}"
 
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
 
-        self.encoder = dinov2_vit.__dict__[model_config.softcon_size](
-            img_size=model_config.image_resolution,
-            patch_size=14,
-            in_chans=model_config.num_channels,
-            block_chunks=0,
-            init_values=1e-5,
-            num_register_tokens=0,
+        self.full_finetune = model_config.get("full_finetune", False)
+
+        # load dino model
+        self.encoder = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14")
+        # add softcon input layer
+        self.encoder.patch_embed.proj = torch.nn.Conv2d(
+            model_config.num_channels, 384, kernel_size=(14, 14), stride=(14, 14)
         )
 
-        # look for pretrained weights
-        dir = os.getenv("MODEL_WEIGHTS_DIR")
-        filename = model_config.pretrained_path
-        path = os.path.join(dir, filename)
-        if not os.path.exists(path):
-            # download the weights from HF
-            download_url(self.url.format(filename), dir, filename=filename)
+        # look for Softcon pretrained weights
+        if model_config.get("pretrained_path", None):
+            path = model_config.pretrained_path
+            if not os.path.exists(path):
+                download_url(
+                    self.url.format(os.path.basename(path)),
+                    os.path.dirname(path),
+                    filename=os.path.basename(path),
+                )
 
-        ckpt_vit14 = torch.load(path)
-        self.encoder.load_state_dict(ckpt_vit14)
+            ckpt_vit14 = torch.load(path)
+            self.encoder.load_state_dict(ckpt_vit14)
 
         if model_config.freeze_backbone:
             self.freeze(self.encoder)
 
-        self.linear_classifier = nn.Linear(
-            model_config.embed_dim, data_config.num_classes
+        # TODO this embed dim could be pulled from the encoder, to remove the need for the arg
+        self.linear_classifier = LinearHead(
+            in_features=model_config.embed_dim, num_classes=data_config.num_classes
         )
         self.criterion = (
             nn.MultiLabelSoftMarginLoss()
@@ -62,7 +66,24 @@ class SoftConClassification(LightningTask):
         return out_logits, global_pooled
 
     def params_to_optimize(self):
-        return self.linear_classifier.parameters()
+        if self.full_finetune:
+            return self.encoder.parameters() + self.linear_classifier.parameters()
+        elif self.model_config.get("trainable_params", None):
+            trainable_params = self.model_config.trainable_params
+            params_to_optimize = []
+            for name, param in self.encoder.named_parameters():
+                for layer in trainable_params:
+                    if layer in name:
+                        params_to_optimize.append(param)
+
+            if not params_to_optimize:
+                model_params = [name for name, _ in self.encoder.named_parameters()]
+                raise ValueError(
+                    f"No trainable layers found. Check the layer names in the model. Looking at `self.encoder.named_parameters()`, we have found {model_params}"
+                )
+            return params_to_optimize + list(self.linear_classifier.parameters())
+        else:
+            return self.linear_classifier.parameters()
 
     def log_metrics(self, outputs, targets, prefix="train"):
         # Calculate accuracy and other classification-specific metrics
@@ -79,20 +100,30 @@ class SoftConClassification(LightningTask):
 
 
 class SoftConSegmentation(LightningTask):
+    """SoftCon Model for Segmentation."""
+
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
 
-        self.encoder = dinov2_vit.__dict__[model_config.softcon_size](
-            img_size=model_config.image_resolution,
-            patch_size=14,
-            in_chans=model_config.num_channels,
-            block_chunks=0,
-            init_values=1e-5,
-            num_register_tokens=0,
+        # load dino model
+        self.encoder = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14")
+        # add softcon input layer
+        self.encoder.patch_embed.proj = torch.nn.Conv2d(
+            model_config.num_channels, 384, kernel_size=(14, 14), stride=(14, 14)
         )
 
-        ckpt_vit14 = torch.load(model_config.pretrained_path)
-        self.encoder.load_state_dict(ckpt_vit14)
+        # look for Softcon pretrained weights
+        if model_config.get("pretrained_path", None):
+            path = model_config.pretrained_path
+            if not os.path.exists(path):
+                download_url(
+                    self.url.format(os.path.basename(path)),
+                    os.path.dirname(path),
+                    filename=os.path.basename(path),
+                )
+
+            ckpt_vit14 = torch.load(path)
+            self.encoder.load_state_dict(ckpt_vit14)
 
         if model_config.freeze_backbone:
             self.freeze(self.encoder)

@@ -47,3 +47,17 @@ dependencies = [
     "optuna"
 ]
 
+[tool.pytest.ini_options]
+
+filterwarnings = [
+    # Expected warnings
+    # ignore num workers
+    "ignore:The 'val_dataloader' does not have many workers which may be a bottleneck:UserWarning",
+    "ignore:The 'train_dataloader' does not have many workers which may be a bottleneck:UserWarning",
+    # ignore cpu
+    "ignore:GPU available but not used.:UserWarning",
+    # ignore xformers
+    "ignore:xFormers is not available:UserWarning"
+]
+
+

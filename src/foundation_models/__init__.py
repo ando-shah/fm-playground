@@ -7,4 +7,5 @@ from .softcon_wrapper import SoftConModel
 from .dofa_wrapper import DofaModel
 from .satmae_wrapper import SatMAEModel
 from .anysat_wrapper import AnySatModel  # type: ignore
-from .senpame_wrapper import SenPaMAEModel
+from .senpamae_wrapper import SenPaMAEModel
+from .base import LinearHead

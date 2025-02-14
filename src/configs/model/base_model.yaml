@@ -1,5 +1,5 @@
 model_type: null
-size: ${oc.env:MODEL_SIZE}
+size: base
 num_classes: 10
 task: classification
 band_wavelengths: null
@@ -8,3 +8,4 @@ image_resolution: 224
 additional_params: {}
 num_channels: 12
 multilabel: false
+out_features: True

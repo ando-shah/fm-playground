@@ -4,14 +4,16 @@ import torch
 # use mmsegmentation for upernet+mae
 from mmseg.models.necks import Feature2Pyramid
 from mmseg.models.decode_heads import UPerHead, FCNHead
-from util.misc import resize
+
 from .lightning_task import LightningTask
-from util.misc import seg_metric, cls_metric
+from ..util.misc import resize, seg_metric, cls_metric
 
 
 class AnySatClassification(LightningTask):
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
+
+        self.full_finetune = model_config.get("full_finetune", False)
 
         self.encoder = torch.hub.load(
             "gastruc/anysat", "anysat", pretrained=True, flash_attn=False
@@ -41,7 +43,24 @@ class AnySatClassification(LightningTask):
         return out_logits, global_pooled
 
     def params_to_optimize(self):
-        return self.linear_classifier.parameters()
+        if self.full_finetune:
+            return self.encoder.parameters() + self.linear_classifier.parameters()
+        elif self.model_config.get("trainable_params", None):
+            trainable_params = self.model_config.trainable_params
+            params_to_optimize = []
+            for name, param in self.encoder.named_parameters():
+                for layer in trainable_params:
+                    if layer in name:
+                        params_to_optimize.append(param)
+
+            if not params_to_optimize:
+                model_params = [name for name, _ in self.encoder.named_parameters()]
+                raise ValueError(
+                    f"No trainable layers found. Check the layer names in the model. Looking at `self.encoder.named_parameters()`, we have found {model_params}"
+                )
+            return params_to_optimize + list(self.linear_classifier.parameters())
+        else:
+            return self.linear_classifier.parameters()
 
     def log_metrics(self, outputs, targets, prefix="train"):
         # Calculate accuracy and other classification-specific metrics

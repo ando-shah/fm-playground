@@ -98,6 +98,27 @@ To add a new model or dataset for evaluation, follow these steps:
 
 ---
 
+### Note on hydra
+
+Hydra is a powerful and flexible way for experiment configuration, however, it can be a bit confusing at the beginning, as there is now an interplay between different hierarchy levels plus environment variables. 
+
+We differentiate between three kinds of configs:
+
+- Model Config: this includes all specific variables required for a particular model
+- Dataset Config: this includes all specific variables required for a particular dataset
+- Other Config: these variables will be applied on the command line and are additional args for experiment configuration such as the output directory, number of gpus etc.
+
+Any model config parameter can always be overwritten by `model.{param_name}={something}`, similar to the dataset `dataset.{param_name}={something}`. In the `main.py` script that has the hydra decorator they will all be merged and be available under the `cfg` dictionary. For more examples, see the [hydra overwrite examples](https://hydra.cc/docs/advanced/override_grammar/basic/#basic-examples).
+
+### Note on LORA
+
+Need to explain how to run LORA
+
+### Running Unit Tests
+
+We have implemented a series of unit tests that aim to test that there are no runtime bugs. They will also be run on new PRs to check that changes are not breaking other parts. To run the tests you need to `pip install pytest`, and then from the root directory simply run `pytest tests/` which will run all tests file inside the `tests/` directory, or run `pytest tests/test_{model_name}` for any specific unit test file in there.
+
+
 ## Running Experiments
 
 To run evaluation on any of the models, you can use the following example:
@@ -105,7 +126,6 @@ To run evaluation on any of the models, you can use the following example:
 
 ```bash
 export $(cat .env)
-export MODEL_SIZE=base #can be base or large
 echo "Output Directory": $ODIR
 echo "Model Size": $MODEL_SIZE
 

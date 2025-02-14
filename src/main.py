@@ -17,7 +17,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore")
 
 
-
 def print_trainable_parameters(model):
     trainable_params = 0
     all_param = 0
@@ -29,12 +28,13 @@ def print_trainable_parameters(model):
         f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param:.2f}"
     )
 
+
 @hydra.main(config_path="configs", config_name="config")
 def main(cfg: DictConfig):
-
-    print(f'MODEL_SIZE: {os.getenv("MODEL_SIZE")}')
     # Seed everything
     seed_everything(cfg.seed)
+
+    print(cfg)
 
     # Create output directory
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
@@ -64,14 +64,23 @@ def main(cfg: DictConfig):
     ]
 
     # Initialize trainer
-    trainer = Trainer(
-        logger=mlf_logger,
-        callbacks=callbacks,
-        strategy=DDPStrategy(find_unused_parameters=False) if cfg.strategy == "ddp" and cfg.num_gpus > 1 else cfg.strategy,
-        devices=cfg.num_gpus,
-        max_epochs=cfg.epochs,
-        num_sanity_val_steps=0,
-    )
+    if cfg.strategy == "ddp" and cfg.num_gpus > 1:
+        trainer = Trainer(
+            logger=mlf_logger,
+            callbacks=callbacks,
+            strategy=DDPStrategy(find_unused_parameters=False),
+            devices=cfg.num_gpus,
+            max_epochs=cfg.epochs,
+            num_sanity_val_steps=0,
+        )
+    else:
+        trainer = Trainer(
+            logger=mlf_logger,
+            callbacks=callbacks,
+            devices=cfg.num_gpus,
+            max_epochs=cfg.epochs,
+            num_sanity_val_steps=0,
+        )
 
     # Initialize data module
     cfg.dataset.image_resolution = cfg.model.image_resolution

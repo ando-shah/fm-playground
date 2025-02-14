@@ -9,7 +9,7 @@ import warnings
 class PretrainedCROMA(nn.Module):
     def __init__(
         self,
-        pretrained_path="CROMA_base.pt",
+        pretrained_path: str | None = "CROMA_base.pt",
         size="base",
         modality="both",
         image_resolution=120,
@@ -20,9 +20,9 @@ class PretrainedCROMA(nn.Module):
         """
         super().__init__()
         # check types
-        assert isinstance(pretrained_path, str), (
-            f"pretrained_path must be a string, not {type(pretrained_path)}"
-        )
+        # assert isinstance(pretrained_path, str), (
+        #     f"pretrained_path must be a string, not {type(pretrained_path)}"
+        # )
         assert isinstance(size, str), f"size must be a string, not {type(size)}"
         assert isinstance(modality, str), (
             f"modality must be a string, not {type(modality)}"
@@ -46,14 +46,16 @@ class PretrainedCROMA(nn.Module):
         ], f"modality must be either both, SAR, or optical, not {modality}"
 
         # warn the user if the path contains a different size than the size parameter
-        if size == "base" and "large" in pretrained_path:
-            warnings.warn(
-                "The size is set to base, but the word large appears in the pretrained path!"
-            )
-        elif size == "large" and "base" in pretrained_path:
-            warnings.warn(
-                "The size is set to large, but the word base appears in the pretrained path!"
-            )
+        if pretrained_path is not None:
+            # TODO remove the size and pretrained, it is redundant as arguments
+            if size == "base" and "large" in pretrained_path:
+                warnings.warn(
+                    "The size is set to base, but the word large appears in the pretrained path!"
+                )
+            elif size == "large" and "base" in pretrained_path:
+                warnings.warn(
+                    "The size is set to large, but the word base appears in the pretrained path!"
+                )
 
         if size == "base":
             self.encoder_dim = 768
@@ -82,7 +84,7 @@ class PretrainedCROMA(nn.Module):
                 depth=int(self.encoder_depth / 2),
                 in_channels=self.s1_channels,
             )
-            self.GAP_FFN_s1 = nn.Sequential(
+            self.s1_GAP_FFN = nn.Sequential(
                 nn.LayerNorm(self.encoder_dim),
                 nn.Linear(
                     self.encoder_dim, int(4 * self.encoder_dim)
@@ -94,8 +96,13 @@ class PretrainedCROMA(nn.Module):
             )
 
             # load weights
-            self.s1_encoder.load_state_dict(torch.load(pretrained_path)["s1_encoder"])
-            self.GAP_FFN_s1.load_state_dict(torch.load(pretrained_path)["s1_GAP_FFN"])
+            if pretrained_path is not None:
+                self.s1_encoder.load_state_dict(
+                    torch.load(pretrained_path)["s1_encoder"]
+                )
+                self.s1_GAP_FFN.load_state_dict(
+                    torch.load(pretrained_path)["s1_GAP_FFN"]
+                )
 
         if modality in ["optical", "both"]:
             print("Initializing optical encoder")
@@ -104,7 +111,7 @@ class PretrainedCROMA(nn.Module):
                 depth=self.encoder_depth,
                 in_channels=self.s2_channels,
             )
-            self.GAP_FFN_s2 = nn.Sequential(
+            self.s2_GAP_FFN = nn.Sequential(
                 nn.LayerNorm(self.encoder_dim),
                 nn.Linear(
                     self.encoder_dim, int(4 * self.encoder_dim)
@@ -116,8 +123,13 @@ class PretrainedCROMA(nn.Module):
             )
 
             # load weights
-            self.s2_encoder.load_state_dict(torch.load(pretrained_path)["s2_encoder"])
-            self.GAP_FFN_s2.load_state_dict(torch.load(pretrained_path)["s2_GAP_FFN"])
+            if pretrained_path is not None:
+                self.s2_encoder.load_state_dict(
+                    torch.load(pretrained_path)["s2_encoder"]
+                )
+                self.s2_GAP_FFN.load_state_dict(
+                    torch.load(pretrained_path)["s2_GAP_FFN"]
+                )
 
         if modality == "both":
             print("Initializing joint SAR-optical encoder")
@@ -128,9 +140,10 @@ class PretrainedCROMA(nn.Module):
             )
 
             # load weights
-            self.cross_encoder.load_state_dict(
-                torch.load(pretrained_path)["joint_encoder"]
-            )
+            if pretrained_path is not None:
+                self.cross_encoder.load_state_dict(
+                    torch.load(pretrained_path)["joint_encoder"]
+                )
 
     def forward(self, SAR_images=None, optical_images=None):
         return_dict = {}
@@ -141,7 +154,7 @@ class PretrainedCROMA(nn.Module):
             SAR_encodings = self.s1_encoder(
                 imgs=SAR_images, attn_bias=self.attn_bias.to(SAR_images.device)
             )  # (bsz, num_patches, encoder_dim)
-            SAR_GAP = self.GAP_FFN_s1(SAR_encodings.mean(dim=1))  # (bsz, encoder_dim)
+            SAR_GAP = self.s1_GAP_FFN(SAR_encodings.mean(dim=1))  # (bsz, encoder_dim)
             return_dict["SAR_encodings"] = SAR_encodings
             return_dict["SAR_GAP"] = SAR_GAP
 
@@ -153,7 +166,7 @@ class PretrainedCROMA(nn.Module):
                 imgs=optical_images, attn_bias=self.attn_bias.to(optical_images.device)
             )  # (bsz, num_patches, encoder_dim)
             return_dict["out_feats"] = out_feats
-            optical_GAP = self.GAP_FFN_s2(
+            optical_GAP = self.s2_GAP_FFN(
                 optical_encodings.mean(dim=1)
             )  # (bsz, encoder_dim)
             return_dict["optical_encodings"] = optical_encodings.mean(dim=1)
@@ -437,7 +450,6 @@ class ViT(nn.Module):
             j=self.patch_size,
         )
         # x is shape -> (bsz, num_patches, self.channels*self.patch_size*self.patch_size)
-
         x = self.linear_input(x)  # (bsz, num_patches, dim)
         x, out_features = self.transformer(x, relative_position_bias=attn_bias)
         # return out_features

@@ -33,7 +33,9 @@ def train_with_tune(config: Dict[str, Any], hydra_config: DictConfig) -> None:
     hydra_config.batch_size = config["batch_size"]
 
     # Setup logging
-    experiment_name = f"{hydra_config.model.model_type}_{hydra_config.dataset.dataset_name}"
+    experiment_name = (
+        f"{hydra_config.model.model_type}_{hydra_config.dataset.dataset_name}"
+    )
     mlf_logger = MLFlowLogger(
         experiment_name=experiment_name,
         run_name=f"{experiment_name}_trial_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -63,10 +65,11 @@ def train_with_tune(config: Dict[str, Any], hydra_config: DictConfig) -> None:
     trainer = ray.train.lightning.prepare_trainer(trainer)
     trainer.fit(model, data_module)
 
+
 @hydra.main(config_path="configs", config_name="config", version_base=None)
 def main(cfg: DictConfig) -> None:
     """Main function combining Hydra and Ray"""
-    
+
     # Setup directories
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     cfg.output_dir = f"{cfg.output_dir}_{timestamp}"
@@ -77,14 +80,14 @@ def main(cfg: DictConfig) -> None:
         num_workers=1,
         use_gpu=True,
         resources_per_worker={
-            "CPU": cfg.ray.get('cpus_per_trial', 4),
-            "GPU": cfg.ray.get('gpus_per_trial', 1)
-        }
+            "CPU": cfg.ray.get("cpus_per_trial", 4),
+            "GPU": cfg.ray.get("gpus_per_trial", 1),
+        },
     )
-    
+
     run_config = RunConfig(
         storage_path=cfg.output_dir,
-        name=f"tune_{cfg.model.model_type}_{cfg.dataset.dataset_name}"
+        name=f"tune_{cfg.model.model_type}_{cfg.dataset.dataset_name}",
     )
 
     ray_trainer = TorchTrainer(
@@ -107,10 +110,9 @@ def main(cfg: DictConfig) -> None:
         tune_config=tune.TuneConfig(
             metric=model_monitor,
             mode="max",
-            num_samples=cfg.ray.get('num_samples', 10),
+            num_samples=cfg.ray.get("num_samples", 10),
             scheduler=ASHAScheduler(
-                max_t=cfg.epochs,
-                grace_period=cfg.ray.get('grace_period', 5)
+                max_t=cfg.epochs, grace_period=cfg.ray.get("grace_period", 5)
             ),
             search_alg=OptunaSearch(),
         ),
@@ -127,6 +129,7 @@ def main(cfg: DictConfig) -> None:
         f.write(f"Best trial final metric: {best_trial[model_monitor]}\n")
 
     ray.shutdown()
-    
+
+
 if __name__ == "__main__":
     main()

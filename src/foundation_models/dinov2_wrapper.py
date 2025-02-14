@@ -6,15 +6,17 @@ import torch
 # use mmsegmentation for upernet+mae
 from mmseg.models.necks import Feature2Pyramid
 from mmseg.models.decode_heads import UPerHead, FCNHead
-from util.misc import resize
 from .lightning_task import LightningTask
 from einops import rearrange
-from util.misc import seg_metric, cls_metric
+from ..util.misc import resize, seg_metric, cls_metric
 import torch.nn.functional as F
+
 # from .modules import MSDeformAttn
 from timm.models.layers import trunc_normal_
 from torch.nn.init import normal_
 from peft import LoraConfig, get_peft_model
+
+from .base import LinearHead
 
 
 # from .modules import SpatialPriorModule, InteractionBlock, deform_inputs
@@ -29,18 +31,18 @@ class DinoV2Classification(LightningTask):
         self.full_finetune = model_config.get("full_finetune", False)
 
         # can only be one of the two
-        assert not (self.lora and self.full_finetune), "Can only use one of LoRA or full finetune bot not both to true"
+        assert not (self.lora and self.full_finetune), (
+            "Can only use one of LoRA or full finetune bot not both to true"
+        )
 
-        if model_config.size == "base":
-            self.encoder = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14")
-        elif model_config.size == "large":
-            self.encoder = torch.hub.load("facebookresearch/dinov2", "dinov2_vitl14")
-        
-        print(f'DinoV2 model: {model_config.size} | {self.encoder.embed_dim}')
+        self.encoder = torch.hub.load("facebookresearch/dinov2", model_config.dino_size)
+
+        print(f"DinoV2 model: {model_config.size} | {self.encoder.embed_dim}")
         print(self.encoder)
         if self.lora:
-            self.apply_peft_to_last_layers(self.encoder, target_modules=model_config.lora_target_modules, rank=8)
-
+            self.apply_peft_to_last_layers(
+                self.encoder, target_modules=model_config.lora_target_modules, rank=8
+            )
 
         if model_config.freeze_backbone:
             if self.lora:
@@ -48,7 +50,9 @@ class DinoV2Classification(LightningTask):
             else:
                 self.freeze(self.encoder)
 
-        self.linear_classifier = nn.Linear(self.encoder.embed_dim, data_config.num_classes)
+        self.linear_classifier = LinearHead(
+            in_features=self.encoder.embed_dim, num_classes=data_config.num_classes
+        )
 
         self.criterion = (
             nn.MultiLabelSoftMarginLoss()
@@ -56,8 +60,9 @@ class DinoV2Classification(LightningTask):
             else nn.CrossEntropyLoss()
         )
 
-    
-    def apply_peft_to_last_layers(self, encoder, target_modules: list[str], rank: int=8):
+    def apply_peft_to_last_layers(
+        self, encoder, target_modules: list[str], rank: int = 8
+    ):
         """
         Apply LoRA to the last few layers of the encoder using PEFT.
         """
@@ -68,18 +73,16 @@ class DinoV2Classification(LightningTask):
             target_modules=target_modules,  # LoRA target layers
             lora_dropout=0.1,
             bias="none",
-            task_type="SEQ_CLS"  # Task type (use appropriate type for your model)
+            task_type="SEQ_CLS",  # Task type (use appropriate type for your model)
         )
 
         # Wrap the encoder with PEFT
         self.encoder = get_peft_model(encoder, peft_config)
 
-    
     def loss(self, outputs, labels):
         return self.criterion(outputs[0], labels)
 
     def forward(self, samples):
-        x_dict = {"imgs": samples}
         out = self.encoder.forward_features(samples)
         global_pooled = out["x_norm_patchtokens"].mean(dim=1)
         out_logits = self.linear_classifier(global_pooled)
@@ -90,8 +93,24 @@ class DinoV2Classification(LightningTask):
             # Include LoRA parameters for optimization
             lora_params = [p for n, p in self.encoder.named_parameters() if "lora" in n]
             return list(self.linear_classifier.parameters()) + lora_params
-        if self.full_finetune:
-            return list(self.encoder.parameters()) + list(self.linear_classifier.parameters())
+        elif self.full_finetune:
+            return list(self.encoder.parameters()) + list(
+                self.linear_classifier.parameters()
+            )
+        elif self.model_config.get("trainable_params", None):
+            trainable_params = self.model_config.trainable_params
+            trainable_params = []
+            for name, param in self.encoder.named_parameters():
+                for layer in trainable_params:
+                    if layer in name:
+                        trainable_params.append(param)
+            if not trainable_params:
+                model_layers = [name for name, _ in self.encoder.named_parameters()]
+                raise ValueError(
+                    f"No trainable layers found. Check the layer names in the model. Looking at `self.encoder.named_parameters()`, we have found {model_layers}"
+                )
+
+            return trainable_params + list(self.linear_classifier.parameters())
         else:
             return list(self.linear_classifier.parameters())
 

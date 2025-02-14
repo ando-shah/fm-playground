@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+
 load_dotenv()  # take environment variables from .env.
 
 
@@ -125,7 +126,6 @@ experiments = [
         "warmup_epochs": 1,
         "batch_size": 32,
     },
-
     {
         "model": "dofa_cls_linear_probe",
         "dataset": "geobench_eurosat",
@@ -134,7 +134,6 @@ experiments = [
         "lr": 0.002,
         "warmup_epochs": 3,
     },
-
     {
         "model": "dofa_cls_linear_probe",
         "dataset": "benv2_s2",
@@ -159,7 +158,6 @@ experiments = [
         "lr": 0.002,
         "warmup_epochs": 5,
     },
-
     {
         "model": "senpamae_cls",
         "dataset": "geobench_eurosat",
@@ -170,15 +168,16 @@ experiments = [
 ]
 
 
-REPO_PATH=os.getenv("REPO_PATH")
+REPO_PATH = os.getenv("REPO_PATH")
 assert REPO_PATH is not None, "REPO_PATH environment variable must be set"
 
-SEED=13
-BATCH_SIZE=512
-MODEL_SIZE='base' #can be 'base' or 'large'
-NUM_WORKERS=8
+SEED = 13
+BATCH_SIZE = 512
+MODEL_SIZE = "base"  # can be 'base' or 'large'
+NUM_WORKERS = 8
 
 # assert ODIR is not None, "Please set the ODIR environment variable in your .env file to the output directory where logs will be"
+
 
 def generate_bash_scripts(experiments, out_dir="."):
     os.makedirs(out_dir, exist_ok=True)

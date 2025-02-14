@@ -8,6 +8,6 @@ lora:
   lora_dropout: 0.1
   lora_rank: 16
   lora_target_modules:
-  - query
-  - value
+  - proj
+  - qkv
 

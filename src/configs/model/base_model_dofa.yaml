@@ -1,14 +1,13 @@
 model_type: dofa
-size: ${oc.env:MODEL_SIZE}
+size: base
 num_classes: 10
 task: classification
 band_wavelengths: null
 freeze_backbone: true
 image_resolution: 224
 additional_params: {}
-num_channels: 12
 multilabel: false
 out_features: true
-embed_dim: 1024
-pretrained_path: "DOFA_ViT_${size}_e100.pth"
+embed_dim: 768
+pretrained_path: ${oc.env:MODEL_WEIGHTS_DIR}/DOFA_ViT_${size}_e100.pth
 full_finetune: false

@@ -11,6 +11,8 @@ To get started, you can install the required dependencies from the `pyproject.to
 For this navigate to the root directory of this repository and do:
 
 ```
+conda create -n fm python=3.10 --yes
+conda activate fm
 pip install -e .
 ```
 

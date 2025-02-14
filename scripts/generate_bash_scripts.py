@@ -159,6 +159,14 @@ experiments = [
         "lr": 0.002,
         "warmup_epochs": 5,
     },
+
+    {
+        "model": "senpamae_cls",
+        "dataset": "geobench_eurosat",
+        "task": "classification",
+        "epochs": 30,
+        "lr": 0.002,
+    },
 ]
 
 
@@ -166,7 +174,7 @@ REPO_PATH=os.getenv("REPO_PATH")
 assert REPO_PATH is not None, "REPO_PATH environment variable must be set"
 
 SEED=13
-BATCH_SIZE=400
+BATCH_SIZE=512
 MODEL_SIZE='base' #can be 'base' or 'large'
 NUM_WORKERS=8
 
@@ -221,6 +229,7 @@ num_workers={NUM_WORKERS} \\
 epochs=${{epochs}} \\
 warmup_epochs=${{warmup_epochs}} \\
 seed={SEED} \\
+batch_size={batch_size} \\
 """
 
         with open(script_path, "w") as f:

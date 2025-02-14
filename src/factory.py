@@ -9,6 +9,7 @@ from foundation_models import (
     DofaModel,
     SatMAEModel,
     AnySatModel,
+    SenPaMAEModel,
 )
 from datasets.geobench_wrapper import GeoBenchDataset
 from datasets.resisc_wrapper import Resics45Dataset
@@ -24,6 +25,7 @@ model_registry = {
     "dofa": DofaModel,
     "satmae": SatMAEModel,
     "anysat": AnySatModel,
+    "senpamae": SenPaMAEModel,  
     # Add other model mappings here
 }
 

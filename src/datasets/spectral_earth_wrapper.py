@@ -14,7 +14,7 @@ import kornia.augmentation as K
 import torch
 from torchgeo.datasets.geo import NonGeoDataset
 from torchgeo.samplers.utils import _to_tuple
-from .utils.utils import ChannelSampler, extract_wavemus, load_ds_cfg
+from .utils.utils import ChannelSampler, ChannelSimulator, extract_wavemus, load_ds_cfg
 # logger = logging.getLogger("dinov2")
 
 
@@ -304,35 +304,49 @@ class SpectralEarthDataset(NonGeoDataset):
 
 
 class ClsDataAugmentation(torch.nn.Module):
-    def __init__(self, size, split="val", mean=None, std=None, band_ids=None, chn_ids=None):
+    def __init__(self, size, source_chn_ids, split="val", mean=None, std=None, band_ids=None, target_chn_ids=None):
         super().__init__()
 
         flipH = K.RandomHorizontalFlip(p=0.5, keepdim=True)
         flipV = K.RandomVerticalFlip(p=0.5, keepdim=True)
         crop = K.RandomResizedCrop(_to_tuple(size), scale=(0.8, 1.0), keepdim=True)
-        self.chn_ids = None
+        self.output_chn_ids = None
+        
+        # setup HS specific augmentations
         if band_ids is not None:
             chn_sample = ChannelSampler(band_ids)
-            if chn_ids is not None:
-                self.chn_ids = chn_ids[band_ids]
-
+            if source_chn_ids is not None:
+                self.output_chn_ids = source_chn_ids[band_ids]
+            else:
+                raise ValueError("[ClsDataAugmentation] source_chn_ids must be provided if band_ids are provided")
+        elif target_chn_ids is not None:
+            chn_sim = ChannelSimulator(source_chn_ids=source_chn_ids, target_chn_ids=target_chn_ids)
+            self.output_chn_ids = target_chn_ids
 
         self.transforms = []
         if split == "train":
             if band_ids is not None:
+                print(f'[ClsDataAugmentation: train] Sampling channels: {band_ids}')
                 self.transforms.append(chn_sample)
-
+            elif target_chn_ids is not None:
+                print(f'[ClsDataAugmentation: train] Simulating channels: {target_chn_ids}')
+                self.transforms.append(chn_sim)
+            
             self.transforms.extend([crop, flipH, flipV])
         else:
             if band_ids is not None:
+                print(f'[ClsDataAugmentation: val/test] Sampling channels: {band_ids}')
                 self.transforms.append(chn_sample)
+            elif target_chn_ids is not None:
+                print(f'[ClsDataAugmentation: val/test] Simulating channels: {target_chn_ids}')
+                self.transforms.append(chn_sim)
 
             self.transforms.extend([crop])
 
         self.transform = torch.nn.Sequential(*self.transforms)
 
     def get_chn_ids(self):
-        return self.chn_ids
+        return self.output_chn_ids
 
     @torch.no_grad()
     def forward(self, x):
@@ -341,24 +355,30 @@ class ClsDataAugmentation(torch.nn.Module):
 
 class CorineDataset:
     def __init__(self, config):
-        self.dataset_config = config
+        self.config = config
         self.img_size = (config.image_resolution, config.image_resolution)
         self.root_dir = config.data_path
         self.band_ids = config.get("band_ids", None)
         self.ds_name = config.dataset_name
-        self.full_spectra = config.get("full_spectra", False)
-        self.chn_ids = torch.tensor(extract_wavemus(load_ds_cfg(self.ds_name), True), dtype=torch.long)
-        self.config = config
+        self.target_ds_name = config.get('target_dataset_name', None)
+        self.full_spectra = config.get("full_spectra", False) # only for panopticon
+        self.source_chn_ids = torch.tensor(extract_wavemus(load_ds_cfg(self.ds_name), True), dtype=torch.long) #load all bands
+        if self.target_ds_name is not None:
+            self.target_chn_ids = torch.tensor(extract_wavemus(load_ds_cfg(self.target_ds_name), True), dtype=torch.long) #load all bands
+        else:
+            self.target_chn_ids = None
+
+        #both band_ids and target_ds_name are mutually exclusive
+        assert (self.band_ids is not None and self.target_ds_name is None) or (self.band_ids is None and self.target_ds_name is not None), "Both band_ids and target_ds_name cannot be provided"
 
     def create_dataset(self):
-        train_transform = ClsDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, chn_ids=self.chn_ids)
-        eval_transform = ClsDataAugmentation(split="test", size=self.img_size, band_ids=self.band_ids, chn_ids=self.chn_ids)
+        train_transform = ClsDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
+        eval_transform = ClsDataAugmentation(split="test", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
 
 
-        output_chn_ids = train_transform.get_chn_ids()
-
+        # Override the config with the transformed channel ids
+        output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
         if output_chn_ids is not None:
-
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
             if self.full_spectra:
                 self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()

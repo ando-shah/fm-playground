@@ -21,17 +21,23 @@ class ChannelSampler(torch.nn.Module):
 
 
 
-class ChannelSimulator:
+class ChannelSimulator(torch.nn.Module):
     def __init__(self,
+                 source_chn_ids,
+                 target_chn_ids,
                  wavelength_grid_size=1000, 
                  ):
         """
         Initialize the SpectralConvolutionTransform.
 
         Parameters:
+        - source_chn_ids: Source channel parameters (means, stds) shape (C, 2)
         - wavelength_grid_size: Number of steps in the wavelength grid for numerical integration.
         """
+        super().__init__()
         self.wavelength_grid_size = wavelength_grid_size
+        self.source_chn_ids = source_chn_ids
+        self.target_chn_ids = target_chn_ids
 
     def _gaussian_srf(self, wavelength, mean, std):
         """Calculate Gaussian SRF for a given wavelength."""
@@ -42,7 +48,6 @@ class ChannelSimulator:
                         source_img,
                         target_srf_mean,
                         target_srf_std,
-                        source_chn_ids=None,
                         wavelength_grid_size=1000):
         """
         Vectorized spectral convolution on a hyperspectral image using individual SRFs for each source channel.
@@ -52,13 +57,12 @@ class ChannelSimulator:
         - source_img: Hyperspectral image with shape (C, H, W)
         - target_srf_mean: Mean wavelength of the target SRF
         - target_srf_std: Standard deviation of the target SRF
-        - source_chn_ids: Source channel parameters (means, stds) shape (C, 2)
         - wavelength_grid_size: Number of points in wavelength grid
 
         Returns:
         - R: The resulting single-channel image with shape (H, W)
         """
-        source_srf_means, source_srf_stds = source_chn_ids[:, 0], source_chn_ids[:, 1]
+        source_srf_means, source_srf_stds = self.source_chn_ids[:, 0], self.source_chn_ids[:, 1]
 
         # Set the integration range to ±3 stddevs from the target mean
         lambda_min = target_srf_mean - 3 * target_srf_std
@@ -113,24 +117,20 @@ class ChannelSimulator:
                     for i in range(len(data_obj['imgs'][s]))]
         return chn_indices
 
-    def __call__(self, data_obj, target_ch_ids):
+    def __call__(self, source_img):
         """
-        data_obj - dict with keys: 'img', 'chn_ids'
+        source_img - tensor of shape (C, H, W): HS image
         target_ch_ids - tensor of shape (num_chns, 2) with the mean wavelength and standard deviation of each target channel SRF.
         """
 
-        source_img = data_obj['imgs'][0]
         device = source_img.device
 
-        if isinstance(target_ch_ids, torch.Tensor):
-            target_srf_mean, target_srf_std = target_ch_ids[:,0], target_ch_ids[:,1]
-        elif isinstance(target_ch_ids, list):
-            target_srf_mean, target_srf_std = zip(*target_ch_ids)
+        if isinstance(self.target_chn_ids, torch.Tensor):
+            target_srf_mean, target_srf_std = self.target_chn_ids[:,0], self.target_chn_ids[:,1]
+        elif isinstance(self.target_chn_ids, list):
+            target_srf_mean, target_srf_std = zip(*self.target_chn_ids)
             target_srf_mean, target_srf_std = torch.tensor(target_srf_mean, device=device).float(), torch.tensor(target_srf_std, device=device).float()
             # print(f'target_srf_mean: {target_srf_mean}, target_srf_std: {target_srf_std}')
-
-        data_obj_out = {k: [] for k in data_obj.keys()}
-        source_chn_ids = data_obj['chn_ids'][0]
 
         out_chns, out_chn_ids = [], []
 
@@ -140,16 +140,14 @@ class ChannelSimulator:
                             source_img=source_img,
                             target_srf_mean=mu,
                             target_srf_std=sigma,
-                            source_chn_ids=source_chn_ids,
                             wavelength_grid_size=self.wavelength_grid_size
                             ))
         #stack to tensor
-        out_chns = torch.stack(out_chns, dim=0)
-        data_obj_out['imgs'] = [out_chns]
-        out_chn_ids = torch.stack([target_srf_mean, target_srf_std], dim=1)
-        data_obj_out['chn_ids'] = [out_chn_ids]
+        out_img = torch.stack(out_chns, dim=0)
+        # out_chn_ids = torch.stack([target_srf_mean, target_srf_std], dim=1)
 
-        return data_obj_out
+
+        return out_img #, out_chn_ids
 
 def read_yaml(yaml_file):
     with open(yaml_file, 'r') as f:

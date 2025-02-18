@@ -3,6 +3,8 @@ task: null  # Options: "classification", "segmentation"
 num_classes: null
 num_channels: null
 data_path: null
-band_wavelengths: null
+wavelengths_mean_nm: null
+wavelengths_sigma_nm: null
 multilabel: null
+image_resolution: null #what resolution to use for the images
 

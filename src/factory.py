@@ -14,7 +14,7 @@ from src.foundation_models import (
 from src.datasets.geobench_wrapper import GeoBenchDataset
 from src.datasets.resisc_wrapper import Resics45Dataset
 from src.datasets.benv2_wrapper import BenV2Dataset
-
+from src.datasets.spectral_earth_wrapper import CorineDataset
 from src.datasets.dummy_dataset import DummyWrapper
 
 model_registry = {
@@ -35,6 +35,7 @@ dataset_registry = {
     "geobench": GeoBenchDataset,
     "resisc45": Resics45Dataset,
     "benv2": BenV2Dataset,
+    "corine": CorineDataset,
     # Add other dataset mappings here
     "dummy": DummyWrapper,
 }

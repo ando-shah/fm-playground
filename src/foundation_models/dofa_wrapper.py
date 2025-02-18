@@ -114,7 +114,8 @@ class DofaClassification(LightningTask):
         return self.criterion(outputs[0], labels)
 
     def forward(self, samples):
-        out_logits, feats = self.encoder(samples, self.data_config.band_wavelengths)
+        wave_list = [self.data_config.wavelengths_mean_nm[i]/1e3 for i in range(len(self.data_config.wavelengths_mean_nm))] #convert nm -> microns
+        out_logits, feats = self.encoder(samples, wave_list)
         return (out_logits, feats) if self.model_config.out_features else out_logits
 
     def params_to_optimize(self):

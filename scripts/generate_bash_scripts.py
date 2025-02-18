@@ -210,7 +210,6 @@ def generate_bash_scripts(experiments, out_dir="."):
         # Generate script content
         script_content = f"""#!/bin/bash
 
-export CUDA_VISIBLE_DEVICES=0
 export $(cat {REPO_PATH}/.env)
 export MODEL_SIZE={MODEL_SIZE}
 
@@ -221,8 +220,7 @@ lr={lr}
 epochs={epochs}
 warmup_epochs={warmup_epochs}
 task={task}
-# num_gpus=$(nvidia-smi -L | wc -l)
-num_gpus=1 #hardcoded for now
+num_gpus=$(nvidia-smi -L | wc -l)
 
 echo "***************************************"
 echo "Output Directory": $ODIR

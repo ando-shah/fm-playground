@@ -202,10 +202,27 @@ class SenPaMAEClassification(LightningTask):
         self.log(f"{prefix}_acc5", acc5, on_step=True, on_epoch=True, prog_bar=True)
 
 
+class SenPaMAERegression(SenPaMAEClassification):
+    def __init__(self, args, model_config, data_config):
+        super().__init__(args, model_config, data_config)
+
+        self.criterion = nn.MSELoss()
+
+
+    def log_metrics(self, outputs, targets, prefix="train"):
+        # Calculate accuracy and other classification-specific metrics
+        mse, mae = reg_metric(self.data_config, outputs[0], targets)
+        self.log(f"{prefix}_mse", mse, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"{prefix}_mae", mae, on_step=True, on_epoch=True, prog_bar=True)
+
+
+
 # Model factory for different dinov2 tasks
 def SenPaMAEModel(args, model_config, data_config):
     if args.task == "classification":
         return SenPaMAEClassification(args, model_config, data_config)
+    elif args.task == "regression":
+        return SenPaMAERegression(args, model_config, data_config)
     # elif args.task == "segmentation":
     #     return DofaSegmentation(args, model_config, data_config)
     else:

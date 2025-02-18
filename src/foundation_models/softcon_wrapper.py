@@ -7,7 +7,7 @@ from mmseg.models.necks import Feature2Pyramid
 from mmseg.models.decode_heads import UPerHead, FCNHead
 from .lightning_task import LightningTask
 from einops import rearrange
-from ..util.misc import resize, seg_metric, cls_metric
+from ..util.misc import resize, seg_metric, cls_metric, reg_metric
 from torchvision.datasets.utils import download_url
 
 from .base import LinearHead
@@ -97,6 +97,20 @@ class SoftConClassification(LightningTask):
         )
         self.log(f"{prefix}_acc1", acc1, on_step=True, on_epoch=True, prog_bar=True)
         self.log(f"{prefix}_acc5", acc5, on_step=True, on_epoch=True, prog_bar=True)
+
+class SoftConRegression(SoftConClassification):
+    def __init__(self, args, model_config, data_config):
+        super().__init__(args, model_config, data_config)
+
+        self.criterion = nn.MSELoss()
+
+
+    def log_metrics(self, outputs, targets, prefix="train"):
+        # Calculate accuracy and other classification-specific metrics
+        mse, mae = reg_metric(self.data_config, outputs[0], targets)
+        self.log(f"{prefix}_mse", mse, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"{prefix}_mae", mae, on_step=True, on_epoch=True, prog_bar=True)
+
 
 
 class SoftConSegmentation(LightningTask):
@@ -199,6 +213,8 @@ class SoftConSegmentation(LightningTask):
 def SoftConModel(args, model_config, data_config):
     if args.task == "classification":
         return SoftConClassification(args, model_config, data_config)
+    elif args.task == "regression":
+        return SoftConRegression(args, model_config, data_config)
     elif args.task == "segmentation":
         return SoftConSegmentation(args, model_config, data_config)
     else:

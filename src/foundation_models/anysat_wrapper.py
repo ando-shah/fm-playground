@@ -6,7 +6,7 @@ from mmseg.models.necks import Feature2Pyramid
 from mmseg.models.decode_heads import UPerHead, FCNHead
 
 from .lightning_task import LightningTask
-from ..util.misc import resize, seg_metric, cls_metric
+from ..util.misc import resize, seg_metric, cls_metric, reg_metric
 
 
 class AnySatClassification(LightningTask):
@@ -74,6 +74,20 @@ class AnySatClassification(LightningTask):
         )
         self.log(f"{prefix}_acc1", acc1, on_step=True, on_epoch=True, prog_bar=True)
         self.log(f"{prefix}_acc5", acc5, on_step=True, on_epoch=True, prog_bar=True)
+
+class AnySatRegression(AnySatClassification):
+    def __init__(self, args, model_config, data_config):
+        super().__init__(args, model_config, data_config)
+
+        self.criterion = nn.MSELoss()
+
+
+    def log_metrics(self, outputs, targets, prefix="train"):
+        # Calculate accuracy and other classification-specific metrics
+        mse, mae = reg_metric(self.data_config, outputs[0], targets)
+        self.log(f"{prefix}_mse", mse, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"{prefix}_mae", mae, on_step=True, on_epoch=True, prog_bar=True)
+
 
 
 class AnySatSegmentation(LightningTask):
@@ -155,6 +169,8 @@ class AnySatSegmentation(LightningTask):
 def AnySatModel(args, model_config, data_config):
     if args.task == "classification":
         return AnySatClassification(args, model_config, data_config)
+    elif args.task == "regression":
+        return AnySatRegression(args, model_config, data_config)
     elif args.task == "segmentation":
         return AnySatSegmentation(args, model_config, data_config)
     else:

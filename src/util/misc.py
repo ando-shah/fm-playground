@@ -10,6 +10,7 @@ from torchmetrics.functional.classification import (
     multilabel_average_precision,
     multilabel_f1_score,
 )
+from torchmetrics.functional.regression import mean_squared_error, mean_absolute_error
 
 from torchmetrics.functional import jaccard_index, accuracy
 
@@ -64,6 +65,12 @@ def cls_metric(dataset_config, output, target):
     else:
         acc1, acc5 = timm_accuracy(output, target, topk=(1, 5))
     return acc1, acc5
+
+def reg_metric(dataset_config, output, target):
+    mse = mean_squared_error(output, target)
+    mae = mean_absolute_error(output, target)
+    return mse, mae
+    
 
 
 def seg_metric(dataset_config, output, target):

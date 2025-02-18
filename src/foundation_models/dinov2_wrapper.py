@@ -128,6 +128,20 @@ class DinoV2Classification(LightningTask):
         self.log(f"{prefix}_acc5", acc5, on_step=True, on_epoch=True, prog_bar=True)
 
 
+class DinoV2Regression(DinoV2Classification):
+    def __init__(self, args, model_config, data_config):
+        super().__init__(args, model_config, data_config)
+
+        self.criterion = nn.MSELoss()
+
+
+    def log_metrics(self, outputs, targets, prefix="train"):
+        # Calculate accuracy and other classification-specific metrics
+        mse, mae = reg_metric(self.data_config, outputs[0], targets)
+        self.log(f"{prefix}_mse", mse, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"{prefix}_mae", mae, on_step=True, on_epoch=True, prog_bar=True)
+
+
 class DinoV2Adapter(nn.Module):
     def __init__(
         self,
@@ -431,6 +445,8 @@ class DinoV2Segmentation(LightningTask):
 def DinoV2Model(args, model_config, data_config):
     if args.task == "classification":
         return DinoV2Classification(args, model_config, data_config)
+    elif args.task == "regression":
+        return DinoV2Regression(args, model_config, data_config)
     elif args.task == "segmentation":
         return DinoV2AdapterSegmentation(args, model_config, data_config)
     else:

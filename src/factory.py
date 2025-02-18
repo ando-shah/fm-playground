@@ -10,6 +10,7 @@ from src.foundation_models import (
     SatMAEModel,
     AnySatModel,
     SenPaMAEModel,
+    StealthModel
 )
 from src.datasets.geobench_wrapper import GeoBenchDataset
 from src.datasets.resisc_wrapper import Resics45Dataset
@@ -22,7 +23,6 @@ from src.datasets.dummy_dataset import DummyWrapper
 
 model_registry = {
     "croma": CromaModel,
-    # "panopticon": PanopticonModel,
     "scalemae": ScaleMAEModel,
     "gfm": GFMModel,
     "dinov2": DinoV2Model,
@@ -31,6 +31,7 @@ model_registry = {
     "satmae": SatMAEModel,
     "anysat": AnySatModel,
     "senpamae": SenPaMAEModel,
+    "stealth": StealthModel,
     # Add other model mappings here
 }
 
@@ -44,6 +45,7 @@ dataset_registry = {
     "hyperview": HyperviewDataset,
     # Add other dataset mappings here
     "dummy": DummyWrapper,
+    # Add other dataset mappings here
 }
 
 
@@ -52,17 +54,18 @@ def create_dataset(config_data):
     dataset_class = dataset_registry.get(dataset_type)
     if dataset_class is None:
         raise ValueError(f"Dataset type '{dataset_type}' not found.")
+    
     dataset = dataset_class(config_data)
-    # return the train, val, and test dataset
+
     return dataset.create_dataset()
 
 
-def create_model(args, config_model, dataset_config=None):
-    model_name = config_model.model_type
+def create_model(args, model_config, dataset_config=None):
+    model_name = model_config.model_type
     model_class = model_registry.get(model_name)
     if model_class is None:
         raise ValueError(f"Model type '{model_name}' not found.")
 
-    model = model_class(args, config_model, dataset_config)
+    model = model_class(args, model_config, dataset_config)
 
     return model

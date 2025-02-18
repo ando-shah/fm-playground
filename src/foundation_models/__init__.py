@@ -9,3 +9,7 @@ from .satmae_wrapper import SatMAEModel
 from .anysat_wrapper import AnySatModel  # type: ignore
 from .senpamae_wrapper import SenPaMAEModel
 from .base import LinearHead
+try:
+    from .stealth_wrapper import StealthModel
+except ImportError:
+    StealthModel = None

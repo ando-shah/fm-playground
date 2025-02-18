@@ -3,62 +3,50 @@ import math
 import torch.nn as nn
 import torch
 
-# use mmsegmentation for upernet+mae
-from mmseg.models.necks import Feature2Pyramid
-from mmseg.models.decode_heads import UPerHead, FCNHead
-from .lightning_task import LightningTask
+from .lightning_task import LightningClassificationTask, LightningTask, LightningSegmentationTask
 from einops import rearrange
-from ..util.misc import resize, seg_metric, cls_metric
+from ..util.misc import resize, seg_metric
 import torch.nn.functional as F
 
 # from .modules import MSDeformAttn
 from timm.models.layers import trunc_normal_
 from torch.nn.init import normal_
 from peft import LoraConfig, get_peft_model
-
 from .base import LinearHead
 
+try:
+    from mmseg.models.decode_heads import UPerHead, FCNHead
+except: 
+    print('Could not import mmseg.models.decode_heads')
 
-# from .modules import SpatialPriorModule, InteractionBlock, deform_inputs
+try:
+    from .modules import MSDeformAttn
+    from .modules import SpatialPriorModule, InteractionBlock, deform_inputs
+except:
+    print('Could not import VitAdapter modules.')
 
 
-class DinoV2Classification(LightningTask):
+
+
+def load_encoder(model_config):
+    return torch.hub.load("facebookresearch/dinov2", model_config.dinov2_torchhub_id)
+
+
+class DinoV2Classification(LightningClassificationTask):
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
 
-        self.lora = model_config.get("lora", False)
-
-        self.full_finetune = model_config.get("full_finetune", False)
-
-        # can only be one of the two
-        assert not (self.lora and self.full_finetune), (
-            "Can only use one of LoRA or full finetune bot not both to true"
-        )
-
-        self.encoder = torch.hub.load("facebookresearch/dinov2", model_config.dino_size)
-
-        print(f"DinoV2 model: {model_config.size} | {self.encoder.embed_dim}")
-        print(self.encoder)
-        if self.lora:
-            self.apply_peft_to_last_layers(
-                self.encoder, target_modules=model_config.lora_target_modules, rank=8
-            )
-
-        if model_config.freeze_backbone:
-            if self.lora:
-                self.freeze_non_lora_params(self.encoder)
-            else:
-                self.freeze(self.encoder)
+        self.encoder = load_encoder(model_config)
 
         self.linear_classifier = LinearHead(
-            in_features=self.encoder.embed_dim, num_classes=data_config.num_classes
-        )
+            in_features=self.encoder.embed_dim, num_classes=data_config.num_classes)
+        self.dot_str_of_linear_classifier = None
 
-        self.criterion = (
-            nn.MultiLabelSoftMarginLoss()
-            if data_config.multilabel
-            else nn.CrossEntropyLoss()
-        )
+        if self.training_mode == 'lora':
+            self.apply_peft_to_last_layers(
+                self.encoder, target_modules=model_config.lora_target_modules, rank=8)
+
+        self.freeze_and_return_params()
 
     def apply_peft_to_last_layers(
         self, encoder, target_modules: list[str], rank: int = 8
@@ -79,8 +67,6 @@ class DinoV2Classification(LightningTask):
         # Wrap the encoder with PEFT
         self.encoder = get_peft_model(encoder, peft_config)
 
-    def loss(self, outputs, labels):
-        return self.criterion(outputs[0], labels)
 
     def forward(self, samples):
         out = self.encoder.forward_features(samples)
@@ -88,44 +74,6 @@ class DinoV2Classification(LightningTask):
         out_logits = self.linear_classifier(global_pooled)
         return out_logits, global_pooled
 
-    def params_to_optimize(self):
-        if self.lora:
-            # Include LoRA parameters for optimization
-            lora_params = [p for n, p in self.encoder.named_parameters() if "lora" in n]
-            return list(self.linear_classifier.parameters()) + lora_params
-        elif self.full_finetune:
-            return list(self.encoder.parameters()) + list(
-                self.linear_classifier.parameters()
-            )
-        elif self.model_config.get("trainable_params", None):
-            trainable_params = self.model_config.trainable_params
-            trainable_params = []
-            for name, param in self.encoder.named_parameters():
-                for layer in trainable_params:
-                    if layer in name:
-                        trainable_params.append(param)
-            if not trainable_params:
-                model_layers = [name for name, _ in self.encoder.named_parameters()]
-                raise ValueError(
-                    f"No trainable layers found. Check the layer names in the model. Looking at `self.encoder.named_parameters()`, we have found {model_layers}"
-                )
-
-            return trainable_params + list(self.linear_classifier.parameters())
-        else:
-            return list(self.linear_classifier.parameters())
-
-    def log_metrics(self, outputs, targets, prefix="train"):
-        # Calculate accuracy and other classification-specific metrics
-        acc1, acc5 = cls_metric(self.data_config, outputs[0], targets)
-        self.log(
-            f"{prefix}_loss",
-            self.loss(outputs, targets),
-            on_step=True,
-            on_epoch=True,
-            prog_bar=True,
-        )
-        self.log(f"{prefix}_acc1", acc1, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_acc5", acc5, on_step=True, on_epoch=True, prog_bar=True)
 
 
 class DinoV2Regression(DinoV2Classification):
@@ -365,85 +313,27 @@ class DinoV2AdapterSegmentation(LightningTask):
         self.log(f"{prefix}_acc", acc, on_step=True, on_epoch=True, prog_bar=True)
 
 
-class DinoV2Segmentation(LightningTask):
+class DinoV2Segmentation(LightningSegmentationTask):
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
-        self.encoder = torch.hub.load("facebookresearch/dinov2", model_config.dino_size)
-        if model_config.freeze_backbone:
-            self.freeze(self.encoder)
 
-        edim = self.encoder.embed_dim
-        self.neck = Feature2Pyramid(embed_dim=edim, rescales=[4, 2, 1, 0.5])
-        self.decoder = UPerHead(
-            in_channels=[edim] * 4,
-            in_index=[0, 1, 2, 3],
-            pool_scales=(1, 2, 3, 6),
-            channels=512,
-            dropout_ratio=0.1,
-            num_classes=data_config.num_classes,
-            norm_cfg=dict(type="SyncBN", requires_grad=True),
-            align_corners=False,
-            loss_decode=dict(
-                type="CrossEntropyLoss", use_sigmoid=False, loss_weight=1.0
-            ),
-        )
-        self.aux_head = FCNHead(
-            in_channels=edim,
-            in_index=2,
-            channels=256,
-            num_convs=1,
-            concat_input=False,
-            dropout_ratio=0.1,
-            num_classes=data_config.num_classes,
-            norm_cfg=dict(type="SyncBN", requires_grad=True),
-            align_corners=False,
-            loss_decode=dict(
-                type="CrossEntropyLoss", use_sigmoid=False, loss_weight=0.4
-            ),
-        )
-        self.criterion = nn.CrossEntropyLoss()
+        self.encoder = load_encoder(model_config)
+        self._build_default_segm_modules()
+        self.freeze_and_return_params()
 
-    def loss(self, outputs, labels):
-        return self.criterion(outputs[0], labels) + 0.4 * self.criterion(
-            outputs[1], labels
-        )
-
-    def forward(self, samples):
-        # x_dict = {"imgs":samples}
-        x_dict = samples
-        outputs = self.encoder.get_intermediate_layers(x_dict, [4, 6, 10, 11])
-        feats = [
+    def _forward_feats(self, x):
+        x = self.encoder.get_intermediate_layers(x, [4, 6, 10, 11])
+        x = [
             rearrange(out, "n (h w) c -> n c h w", h=int(out.size(1) ** 0.5))
-            for out in outputs
+            for out in x
         ]
-        feats = self.neck(feats)
-        out = self.decoder(feats)
-        out = resize(out, size=samples.shape[2:], mode="bilinear", align_corners=False)
-        out_a = self.aux_head(feats)
-        out_a = resize(
-            out_a, size=samples.shape[2:], mode="bilinear", align_corners=False
-        )
-        return out, out_a
-
-    def params_to_optimize(self):
-        return (
-            list(self.neck.parameters())
-            + list(self.decoder.parameters())
-            + list(self.aux_head.parameters())
-        )
-
-    def log_metrics(self, outputs, targets, prefix="train"):
-        # Calculate mIoU and other segmentation-specific metrics
-        miou, acc = seg_metric(self.data_config, outputs[0], targets)
-        loss = self.loss(outputs, targets)
-        self.log(f"{prefix}_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_miou", miou, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_acc", acc, on_step=True, on_epoch=True, prog_bar=True)
+        return x
 
 
 # Model factory for different dinov2 tasks
 def DinoV2Model(args, model_config, data_config):
-    if args.task == "classification":
+    task = data_config.task
+    if task == "classification":
         return DinoV2Classification(args, model_config, data_config)
     elif args.task == "regression":
         return DinoV2Regression(args, model_config, data_config)

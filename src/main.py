@@ -31,19 +31,20 @@ def print_trainable_parameters(model):
 
 @hydra.main(config_path="configs", config_name="config")
 def main(cfg: DictConfig):
-    # Seed everything
-    seed_everything(cfg.seed)
 
+    experiment_name = f"{cfg.model.model_type}_{cfg.dataset.dataset_name}_{cfg.training_mode}"
+    if 'output_dir' not in cfg:
+        cfg.output_dir = os.path.join(os.environ['ODIR'], experiment_name)
     print(cfg)
 
-    # Create output directory
+    seed_everything(cfg.seed)
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Scale learning rate for multi-GPU
     cfg.lr *= cfg.num_gpus
+    task = cfg.dataset.task
 
     # Setup logger
-    experiment_name = f"{cfg.model.model_type}_{cfg.dataset.dataset_name}"
     mlf_logger = MLFlowLogger(
         experiment_name=experiment_name,
         run_name=f"{experiment_name}_run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -51,7 +52,7 @@ def main(cfg: DictConfig):
     )
 
     # Callbacks
-    model_monitor = "val_miou" if cfg.task == "segmentation" else "val_acc1"
+    model_monitor = "val_miou" if task == "segmentation" else "val_acc1"
     callbacks = [
         ModelCheckpoint(
             dirpath=os.path.join(cfg.output_dir, "checkpoints"),
@@ -64,23 +65,34 @@ def main(cfg: DictConfig):
     ]
 
     # Initialize trainer
-    if cfg.strategy == "ddp" and cfg.num_gpus > 1:
+
+    if cfg.num_gpus == 0: # cpu
         trainer = Trainer(
             logger=mlf_logger,
             callbacks=callbacks,
+            accelerator='cpu',
+            max_epochs=cfg.epochs,
+            num_sanity_val_steps=0,)
+
+    elif cfg.num_gpus == 1: # single gpu
+        trainer = Trainer(
+            logger=mlf_logger,
+            callbacks=callbacks,
+            accelerator='gpu',
+            devices=cfg.num_gpus,
+            max_epochs=cfg.epochs,
+            num_sanity_val_steps=0,)
+
+    else: # ddp on multiple gpus
+        trainer = Trainer(
+            logger=mlf_logger,
+            callbacks=callbacks,
+            accelerator='gpu',
             strategy=DDPStrategy(find_unused_parameters=False),
             devices=cfg.num_gpus,
             max_epochs=cfg.epochs,
-            num_sanity_val_steps=0,
-        )
-    else:
-        trainer = Trainer(
-            logger=mlf_logger,
-            callbacks=callbacks,
-            devices=cfg.num_gpus,
-            max_epochs=cfg.epochs,
-            num_sanity_val_steps=0,
-        )
+            num_sanity_val_steps=0,)
+        
 
     # Initialize data module
     cfg.dataset.image_resolution = cfg.model.image_resolution
@@ -93,7 +105,6 @@ def main(cfg: DictConfig):
 
     # Create model (assumed to be a LightningModule)
     model = create_model(cfg, cfg.model, cfg.dataset)
-
     print_trainable_parameters(model)
 
     # Train

@@ -60,3 +60,6 @@ filterwarnings = [
     # ignore xformers
     "ignore:xFormers is not available:UserWarning"
 ]
+
+[tool.setuptools.packages.find]
+include = ["geofm_src*"]

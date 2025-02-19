@@ -17,7 +17,7 @@ from src.datasets.benv2_wrapper import BenV2Dataset
 from src.datasets.spectral_earth_wrapper import CorineDataset
 from src.datasets.digital_typhoon_wrapper import DigitalTyphoonDataset
 from src.datasets.tropical_cyclone_wrapper import TropicalCycloneDataset
-
+from src.datasets.hyperview_wrapper import HyperviewDataset
 from src.datasets.dummy_dataset import DummyWrapper
 
 model_registry = {
@@ -41,6 +41,7 @@ dataset_registry = {
     "corine": CorineDataset,
     "digital_typhoon": DigitalTyphoonDataset,
     "tropical_cyclone": TropicalCycloneDataset,
+    "hyperview": HyperviewDataset,
     # Add other dataset mappings here
     "dummy": DummyWrapper,
 }

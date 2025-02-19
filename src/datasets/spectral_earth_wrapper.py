@@ -322,6 +322,8 @@ class ClsDataAugmentation(torch.nn.Module):
         elif target_chn_ids is not None:
             chn_sim = ChannelSimulator(source_chn_ids=source_chn_ids, target_chn_ids=target_chn_ids)
             self.output_chn_ids = target_chn_ids
+        else:
+            self.output_chn_ids = source_chn_ids
 
         self.transforms = []
         if split == "train":
@@ -331,6 +333,8 @@ class ClsDataAugmentation(torch.nn.Module):
             elif target_chn_ids is not None:
                 print(f'[ClsDataAugmentation: train] Simulating channels: {target_chn_ids}')
                 self.transforms.append(chn_sim)
+            else:
+                pass
             
             self.transforms.extend([crop, flipH, flipV])
         else:
@@ -340,6 +344,8 @@ class ClsDataAugmentation(torch.nn.Module):
             elif target_chn_ids is not None:
                 print(f'[ClsDataAugmentation: val/test] Simulating channels: {target_chn_ids}')
                 self.transforms.append(chn_sim)
+            else:
+                pass
 
             self.transforms.extend([crop])
 

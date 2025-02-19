@@ -144,10 +144,29 @@ class ChannelSimulator(torch.nn.Module):
                             ))
         #stack to tensor
         out_img = torch.stack(out_chns, dim=0)
-        # out_chn_ids = torch.stack([target_srf_mean, target_srf_std], dim=1)
-
-
         return out_img #, out_chn_ids
+    
+class MaskTensor(torch.nn.Module): #for HyperviewDataset
+    def __init__(self, mask: bool = True, mask_value: float = 0.):
+        super().__init__()
+        self.mask = mask
+        self.mask_value = mask_value
+
+    def __call__(self, sample):
+        """
+        sample: (x, mask)
+        x: C, H, W
+        mask: H, W
+        output: C, H, W with masked values set to 0
+        """
+        x, mask = sample
+        #set the masked values to 0
+        if self.mask:
+            return torch.masked_fill(x, mask, self.mask_value)
+        else:
+            return x
+
+
 
 def read_yaml(yaml_file):
     with open(yaml_file, 'r') as f:

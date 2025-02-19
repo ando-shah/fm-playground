@@ -20,16 +20,16 @@ def load_encoder(model_config):
     URL = "https://drive.google.com/file/d/16IoG47yzdyUnPqUgaV8ofeja5RgQjlAz"
         
     encoder = vit_base_patch16(
-        image_size=model_config.image_size,
+        image_size=model_config.image_resolution,
         num_channels=model_config.num_channels,
         emb_dim=model_config.embed_dim,
     )
-    print(encoder)
 
     # look for pretrained weights
     if model_config.get("pretrained_path", None):
         path = model_config.pretrained_path
         if not os.path.exists(path):
+            raise NotImplementedError('Need to manually download weights from above link')
             download_url(
                 URL.format(os.path.basename(path)),
                 os.path.dirname(path),
@@ -50,8 +50,8 @@ class SenPaMAEClassification(LightningClassificationTask):
         self.encoder = load_encoder(model_config)
 
         # LoRA
-        if self.lora and model_config.lora:
-            self.apply_peft(self.encoder, lora_cfg=model_config.lora)
+        # if self.lora and model_config.lora:
+        #     self.apply_peft(self.encoder, lora_cfg=model_config.lora)
 
         # setup linear head
         self.linear_classifier = LinearHead(
@@ -115,24 +115,24 @@ class SenPaMAEClassification(LightningClassificationTask):
         # Wrap the encoder with PEFT
         self.encoder = get_peft_model(encoder, peft_config)
 
-    def forward(self, samples):
+    def forward(self, x):
         # subset channels
-        samples = samples[:, self.data_config.senpamae_channels, :, :]
+        x = x[:, self.data_config.senpamae_channels, :, :]
 
-        device = samples.device
+        device = x.device
         srf = self.srf.to(device)
         gsd = self.band_gsds.to(device)
 
         # apply SRF
-        feats, _ = self.encoder(samples, gsd=gsd, rf=srf)
+        x, _ = self.encoder(x, gsd=gsd, rf=srf)
         # swap 0 and 1 dims
-        feats = feats.permute(1, 0, 2)  # (batch, tokens, features)
+        x = x.permute(1, 0, 2)  # (batch, tokens, features)
 
         # mean pool over token dimension
-        globally_pooled = feats.mean(dim=1)
-        out_logits = self.encoder.head(globally_pooled)
+        x = x.mean(dim=1)
+        x = self.encoder.head(x)
 
-        return out_logits, globally_pooled
+        return x
 
 
 

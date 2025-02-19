@@ -50,10 +50,10 @@ class ScaleMAEClassification(LightningClassificationTask):
 
         self.freeze_and_return_params()
 
-    def forward(self, samples):
-        feats = self.encoder.forward_features(samples)
-        out_logits = self.linear_classifier(feats)
-        return (out_logits, feats)
+    def forward(self, x):
+        x = self.encoder.forward_features(x)
+        x = self.linear_classifier(x)
+        return x
 
 
 class ScaleMAESegmentation(LightningSegmentationTask):

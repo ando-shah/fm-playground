@@ -60,5 +60,3 @@ filterwarnings = [
     # ignore xformers
     "ignore:xFormers is not available:UserWarning"
 ]
-
-

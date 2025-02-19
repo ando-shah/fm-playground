@@ -15,9 +15,7 @@ from torchmetrics.functional.regression import mean_squared_error, mean_absolute
 from torchmetrics.functional import jaccard_index, accuracy
 
 
-"""This is useful because align_corners=True can cause some artifacts or misalignment, 
-   especially if the sizes don’t match in specific ways. This check is not done in F.interpolate.
-"""
+
 
 
 def resize(
@@ -28,6 +26,10 @@ def resize(
     align_corners=None,
     warning=True,
 ):
+    """This is useful because align_corners=True can cause some artifacts or misalignment, 
+   especially if the sizes don’t match in specific ways. This check is not done in F.interpolate.
+    """
+
     if warning:
         if size is not None and align_corners:
             input_h, input_w = tuple(int(x) for x in input.shape[2:])

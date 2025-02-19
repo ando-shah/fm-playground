@@ -18,7 +18,7 @@ class LightningTask(LightningModule):
         self.model_config = model_config  # model_config
         self.args = args  # args for optimization params
         self.data_config = data_config  # dataset_config
-        self.training_mode = args.training_mode
+        self.training_mode = model_config.training_mode
         self.save_hyperparameters()
 
     def freeze_and_return_params(self):
@@ -112,6 +112,7 @@ class LightningTask(LightningModule):
             },
         }
 
+
 class LightningClassificationTask(LightningTask):
 
     encoder: torch.nn.Module
@@ -172,11 +173,11 @@ class LightningClassificationTask(LightningTask):
         return params_to_optimize
     
     def loss(self, outputs, labels):
-        return self.criterion(outputs[0], labels)
+        return self.criterion(outputs, labels)
     
     def log_metrics(self, outputs, targets, prefix="train"):
         """ Calculate accuracy and other classification-specific metrics """
-        acc1, acc5 = cls_metric(self.data_config, outputs[0], targets)
+        acc1, acc5 = cls_metric(self.data_config, outputs, targets)
         self.log(
             f"{prefix}_loss",
             self.loss(outputs, targets),
@@ -298,4 +299,3 @@ class LightningSegmentationTask(LightningTask):
         self.log(f"{prefix}_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log(f"{prefix}_miou", miou, on_step=True, on_epoch=True, prog_bar=True)
         self.log(f"{prefix}_acc", acc, on_step=True, on_epoch=True, prog_bar=True)
-    

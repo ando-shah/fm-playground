@@ -64,6 +64,8 @@ def create_model(args, model_config, dataset_config=None):
     model_name = model_config.model_type
     model_class = model_registry.get(model_name)
     if model_class is None:
+        if model_name == 'stealth':
+            raise ImportError("Stealth model requires the stealth_wrapper to be available")
         raise ValueError(f"Model type '{model_name}' not found.")
 
     model = model_class(args, model_config, dataset_config)

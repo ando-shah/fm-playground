@@ -68,11 +68,11 @@ class DinoV2Classification(LightningClassificationTask):
         self.encoder = get_peft_model(encoder, peft_config)
 
 
-    def forward(self, samples):
-        out = self.encoder.forward_features(samples)
-        global_pooled = out["x_norm_patchtokens"].mean(dim=1)
-        out_logits = self.linear_classifier(global_pooled)
-        return out_logits, global_pooled
+    def forward(self, x):
+        x = self.encoder.forward_features(x)
+        x = x["x_norm_patchtokens"].mean(dim=1)
+        x = self.linear_classifier(x)
+        return x
 
 
 

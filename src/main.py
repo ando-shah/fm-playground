@@ -10,7 +10,7 @@ from datasets.data_module import BenchmarkDataModule
 from lightning.pytorch import seed_everything
 from factory import create_model
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -35,7 +35,7 @@ def main(cfg: DictConfig):
     experiment_name = f"{cfg.model.model_type}_{cfg.dataset.dataset_name}_{cfg.training_mode}"
     if 'output_dir' not in cfg:
         cfg.output_dir = os.path.join(os.environ['ODIR'], experiment_name)
-    print(cfg)
+    print(OmegaConf.to_yaml(cfg))
 
     seed_everything(cfg.seed)
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)

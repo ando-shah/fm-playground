@@ -84,9 +84,9 @@ class DofaClassification(LightningClassificationTask):
         # Wrap the encoder with PEFT
         self.encoder = get_peft_model(encoder, peft_config)
 
-    def forward(self, samples):
-        out_logits, feats = self.encoder(samples, self.data_config.band_wavelengths)
-        return (out_logits, feats)
+    def forward(self, x):
+        x, _ = self.encoder(x, self.data_config.band_wavelengths)
+        return x
 
 
 

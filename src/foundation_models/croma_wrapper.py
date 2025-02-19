@@ -3,7 +3,7 @@ from .CROMA.use_croma import PretrainedCROMA
 import torch
 import os
 from torchvision.datasets.utils import download_url
-
+from .base import LinearHead
 
 
 def load_encoder(model_config):
@@ -21,12 +21,18 @@ def load_encoder(model_config):
     else:
         path = None
 
+    modality = model_config.modality
     encoder = PretrainedCROMA(
         pretrained_path=path,
         size=model_config.size,
-        modality=model_config.modality,
-        image_resolution=model_config.image_resolution,
-    )
+        modality=modality,
+        image_resolution=model_config.image_resolution,)
+
+    if modality == "optical":
+        encoder.s2_GAP_FFN = torch.nn.Identity()
+    elif modality == "SAR":
+        encoder.s1_GAP_FFN = torch.nn.Identity()
+
     return encoder
 
 
@@ -38,22 +44,18 @@ class CromaClassification(LightningClassificationTask):
 
         self.encoder = load_encoder(model_config)
 
-        # assign classification head
-        #   we take pre-trained layer norm and only replace the linear layer,
-        #   so in linear probing, layer norm is frozen, only linear layer is unfrozen!
-        del self.encoder.s2_GAP_FFN[2:]
-        self.linear_classifier = torch.nn.Linear(
-            self.encoder.s2_GAP_FFN[1].in_features, data_config.num_classes)
-        self.encoder.s2_GAP_FFN[1] = self.linear_classifier
-        self.dot_str_of_linear_classifier = 's2_GAP_FFN.1' 
+        self.linear_classifier = LinearHead(
+            in_features=self.encoder.encoder_dim, num_classes=data_config.num_classes)
+        self.dot_str_of_linear_classifier = None
 
         self.freeze_and_return_params()
 
-    def forward(self, samples):
-        all_output = self.encoder(optical_images=samples)
-        out_logits = all_output["optical_GAP"]
-        feats = all_output["optical_encodings"]
-        return (out_logits, feats)
+    def forward(self, x):
+        mod = self.model_config.modality
+        x = self.encoder(**{f"{mod}_images": x})
+        x = x[f"{mod}_encodings"]
+        x = self.linear_classifier(x)
+        return x
 
 
 class CromaSegmentation(LightningSegmentationTask):
@@ -64,9 +66,10 @@ class CromaSegmentation(LightningSegmentationTask):
         self._build_default_segm_modules()
         self.freeze_and_return_params()
 
-    def _forward_feats(self, samples):
-        feats = self.encoder(optical_images=samples)["out_feats"]
-        return feats
+    def _forward_feats(self, x):
+        mod = self.model_config.modality
+        x = self.encoder(**{f'{mod}_images': x})["out_feats"]
+        return x
 
 
 

@@ -7,7 +7,7 @@ from mmseg.models.decode_heads import UPerHead, FCNHead
 
 # assert timm.__version__ == "0.3.2" # version check
 from timm.models.layers import trunc_normal_
-from ..util.misc import resize, seg_metric, cls_metric, reg_metric
+from ..util.misc import resize
 
 from .base import LinearHead
 
@@ -36,9 +36,9 @@ class GFMClassification(LightningClassificationTask):
         self.freeze_and_return_params()
 
 
-    def forward(self, samples):
-        out_logits, feats = self.encoder(samples)
-        return (out_logits, feats)
+    def forward(self, x):
+        x, _ = self.encoder(x)
+        return x
 
     
 class GFMRegression(GFMClassification):

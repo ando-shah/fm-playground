@@ -23,14 +23,12 @@ class AnySatClassification(LightningClassificationTask):
 
         self.freeze_and_return_params()
 
-    def forward(self, samples):
-        data = {"spot": samples}
-        features = self.encoder(
-            data, patch_size=16, output="tile", output_modality="spot"
-        )
-        global_pooled = features
-        out_logits = self.linear_classifier(global_pooled)
-        return out_logits, global_pooled
+    def forward(self, x):
+        x = {"spot": x}
+        x = self.encoder(
+            x, patch_size=16, output="tile", output_modality="spot")
+        x = self.linear_classifier(x)
+        return x
 
 
 class AnySatSegmentation(LightningSegmentationTask):

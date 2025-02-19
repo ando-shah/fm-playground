@@ -217,6 +217,7 @@ class LightningClsRegTask(LightningTask):
 
         if not with_name:
             out = [p for _, p in out]
+
         return out
 
     def _filter_named_params(self, named_params, targets):

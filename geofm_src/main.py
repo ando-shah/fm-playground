@@ -34,6 +34,15 @@ def print_trainable_parameters(model):
 def main(cfg: DictConfig):
     is_fastdevrun = cfg.trainer.get('fast_dev_run', False)
 
+    print("DATASET CONFIG")
+    print(cfg.dataset)
+
+    print("MODEL CONFIG")
+    print(cfg.model)
+
+    print("OTHER")
+    print(cfg)
+
     # setup output dir
     if cfg.output_dir is None:
         experiment_name = f"{cfg.model.model_type}/{cfg.model.training_mode}/{cfg.dataset.dataset_name}"
@@ -161,5 +170,4 @@ def main(cfg: DictConfig):
     results.to_csv(os.path.join(cfg.output_dir, 'results.csv'), index=False)
 
 if __name__ == "__main__":
-    os.environ["MODEL_WEIGHTS_DIR"] = os.getenv("MODEL_WEIGHTS_DIR", "./fm_weights")
     main()

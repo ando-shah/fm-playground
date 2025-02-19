@@ -4,7 +4,7 @@ import torch.nn as nn
 from mmseg.models.necks import Feature2Pyramid
 from mmseg.models.decode_heads import UPerHead, FCNHead
 
-from .lightning_task import LightningClassificationTask, LightningSegmentationTask
+from .lightning_task import LightningClsRegTask, LightningSegmentationTask
 from timm.models.layers import trunc_normal_
 from ..util.misc import resize, seg_metric, cls_metric
 from torchvision.datasets.utils import download_url
@@ -42,7 +42,7 @@ def load_encoder(model_config):
     return encoder
 
 
-class SenPaMAEClassification(LightningClassificationTask):
+class SenPaMAEClsReg(LightningClsRegTask):
 
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
@@ -136,28 +136,12 @@ class SenPaMAEClassification(LightningClassificationTask):
 
 
 
-class SenPaMAERegression(SenPaMAEClassification):
-    def __init__(self, args, model_config, data_config):
-        super().__init__(args, model_config, data_config)
-
-        self.criterion = nn.MSELoss()
-
-
-    def log_metrics(self, outputs, targets, prefix="train"):
-        # Calculate accuracy and other classification-specific metrics
-        mse, mae = reg_metric(self.data_config, outputs[0], targets)
-        self.log(f"{prefix}_mse", mse, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_mae", mae, on_step=True, on_epoch=True, prog_bar=True)
-
-
 
 # Model factory for different dinov2 tasks
 def SenPaMAEModel(args, model_config, data_config):
     task = data_config.task
-    if task == "classification":
-        return SenPaMAEClassification(args, model_config, data_config)
-    elif args.task == "regression":
-        return SenPaMAERegression(args, model_config, data_config)
+    if task in ["classification",'regression']:
+        return SenPaMAEClsReg(args, model_config, data_config)
     # elif args.task == "segmentation":
     #     return DofaSegmentation(args, model_config, data_config)
     else:

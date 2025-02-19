@@ -3,7 +3,7 @@ import torch
 import os
 
 # use mmsegmentation for upernet+mae
-from .lightning_task import LightningClassificationTask, LightningSegmentationTask
+from .lightning_task import LightningClsRegTask, LightningSegmentationTask
 from einops import rearrange
 from torchvision.datasets.utils import download_url
 
@@ -40,7 +40,7 @@ def load_encoder(model_config):
     return encoder
 
 
-class SoftConClassification(LightningClassificationTask):
+class SoftConClsReg(LightningClsRegTask):
     """SoftCon model for classification."""
 
 
@@ -88,10 +88,8 @@ class SoftConSegmentation(LightningSegmentationTask):
 # Model factory for different dinov2 tasks
 def SoftConModel(args, model_config, data_config):
     task = data_config.task
-    if task == "classification":
-        return SoftConClassification(args, model_config, data_config)
-    elif args.task == "regression":
-        return SoftConRegression(args, model_config, data_config)
+    if task in ["classification",'regression']:
+        return SoftConClsReg(args, model_config, data_config)
     elif args.task == "segmentation":
         return SoftConSegmentation(args, model_config, data_config)
     else:

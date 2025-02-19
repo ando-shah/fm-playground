@@ -3,7 +3,7 @@ import math
 import torch.nn as nn
 import torch
 
-from .lightning_task import LightningClassificationTask, LightningTask, LightningSegmentationTask
+from .lightning_task import LightningClsRegTask, LightningTask, LightningSegmentationTask
 from einops import rearrange
 from ..util.misc import resize, seg_metric
 import torch.nn.functional as F
@@ -32,7 +32,7 @@ def load_encoder(model_config):
     return torch.hub.load("facebookresearch/dinov2", model_config.dinov2_torchhub_id)
 
 
-class DinoV2Classification(LightningClassificationTask):
+class DinoV2ClsReg(LightningClsRegTask):
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
 
@@ -76,7 +76,7 @@ class DinoV2Classification(LightningClassificationTask):
 
 
 
-class DinoV2Regression(DinoV2Classification):
+class DinoV2Regression(DinoV2ClsReg):
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
 
@@ -333,10 +333,8 @@ class DinoV2Segmentation(LightningSegmentationTask):
 # Model factory for different dinov2 tasks
 def DinoV2Model(args, model_config, data_config):
     task = data_config.task
-    if task == "classification":
-        return DinoV2Classification(args, model_config, data_config)
-    elif args.task == "regression":
-        return DinoV2Regression(args, model_config, data_config)
+    if task in ["classification",'regression']:
+        return DinoV2ClsReg(args, model_config, data_config)
     elif args.task == "segmentation":
         return DinoV2AdapterSegmentation(args, model_config, data_config)
     else:

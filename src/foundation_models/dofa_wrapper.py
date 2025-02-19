@@ -4,7 +4,7 @@ from .DOFA.models_dwv import vit_base_patch16 as vit_base_patch16_cls
 from .DOFA.models_dwv import vit_large_patch16 as vit_large_patch16_cls
 from .DOFA.models_dwv_seg import vit_base_patch16 as vit_base_patch16_seg
 from .DOFA.models_dwv_seg import vit_large_patch16 as vit_large_patch16_seg
-from .lightning_task import LightningClassificationTask, LightningSegmentationTask
+from .lightning_task import LightningClsRegTask, LightningSegmentationTask
 from timm.models.layers import trunc_normal_
 from torchvision.datasets.utils import download_url
 from peft import LoraConfig, get_peft_model
@@ -39,7 +39,7 @@ def load_encoder(model_config):
 
 
 
-class DofaClassification(LightningClassificationTask):
+class DinoV2ClsReg(LightningClsRegTask):
 
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
@@ -107,12 +107,10 @@ class DofaSegmentation(LightningSegmentationTask):
 
 # Model factory for different dinov2 tasks
 def DofaModel(args, model_config, data_config):
-    print("AARGS: ", args)
-    if args.task == "classification":
-        return DofaClassification(args, model_config, data_config)
-    elif args.task == "regression":
-        return DofaRegression(args, model_config, data_config)
-    elif args.task == "segmentation":
+    task = data_config.task
+    if task in ["classification",'regression']:
+        return DinoV2ClsReg(args, model_config, data_config)
+    elif task == "segmentation":
         return DofaSegmentation(args, model_config, data_config)
     else:
         raise NotImplementedError("Task not supported")

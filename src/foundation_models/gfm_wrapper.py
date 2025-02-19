@@ -1,4 +1,4 @@
-from .lightning_task import LightningClassificationTask, LightningSegmentationTask
+from .lightning_task import LightningClsRegTask, LightningSegmentationTask
 from .GFM import build_swin_cls, build_swin_seg
 import torch.nn as nn
 
@@ -18,7 +18,7 @@ def load_encoder(model_config, data_config):
     return encoder
 
 
-class GFMClassification(LightningClassificationTask):
+class GFMClsReg(LightningClsRegTask):
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
 
@@ -39,20 +39,6 @@ class GFMClassification(LightningClassificationTask):
     def forward(self, x):
         x, _ = self.encoder(x)
         return x
-
-    
-class GFMRegression(GFMClassification):
-    def __init__(self, args, model_config, data_config):
-        super().__init__(args, model_config, data_config)
-
-        self.criterion = nn.MSELoss()
-
-
-    def log_metrics(self, outputs, targets, prefix="train"):
-        # Calculate accuracy and other classification-specific metrics
-        mse, mae = reg_metric(self.data_config, outputs[0], targets)
-        self.log(f"{prefix}_mse", mse, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_mae", mae, on_step=True, on_epoch=True, prog_bar=True)
 
 
 
@@ -127,10 +113,8 @@ class GFMSegmentation(LightningSegmentationTask):
 # Model factory for different dinov2 tasks
 def GFMModel(args, model_config, data_config):
     task = data_config.task
-    if task == "classification":
-        return GFMClassification(args, model_config, data_config)
-    elif args.task == "regression":
-        return GFMRegression(args, model_config, data_config)
+    if task in ["classification",'regression']:
+        return GFMClsReg(args, model_config, data_config)
     elif args.task == "segmentation":
         return GFMSegmentation(args, model_config, data_config)
     else:

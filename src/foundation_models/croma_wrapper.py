@@ -1,4 +1,4 @@
-from .lightning_task import LightningClassificationTask, LightningSegmentationTask
+from .lightning_task import LightningClsRegTask, LightningSegmentationTask
 from .CROMA.use_croma import PretrainedCROMA
 import torch
 import os
@@ -37,7 +37,7 @@ def load_encoder(model_config):
 
 
 
-class CromaClassification(LightningClassificationTask):
+class CromaClsReg(LightningClsRegTask):
 
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
@@ -76,10 +76,8 @@ class CromaSegmentation(LightningSegmentationTask):
 # Model factory for different dinov2 tasks
 def CromaModel(args, model_config, data_config):
     task = data_config.task
-    if task == "classification":
-        return CromaClassification(args, model_config, data_config)
-    elif args.task == "regression":
-        return CromaRegression(args, model_config, data_config)
+    if task in ["classification",'regression']:
+        return CromaClsReg(args, model_config, data_config)
     elif args.task == "segmentation":
         return CromaSegmentation(args, model_config, data_config)
     else:

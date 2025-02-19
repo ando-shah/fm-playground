@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch
 import os
 
-from .lightning_task import LightningClassificationTask, LightningSegmentationTask
+from .lightning_task import LightningClsRegTask, LightningSegmentationTask
 
 from torchvision.datasets.utils import download_url
 
@@ -49,7 +49,7 @@ def load_encoder(model_config):
     return encoder
 
 
-class SatMAEClassification(LightningClassificationTask):
+class SatMAEClsReg(LightningClsRegTask):
 
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
@@ -88,10 +88,8 @@ class SatMAESegmentation(LightningSegmentationTask):
 # Model factory for different dinov2 tasks
 def SatMAEModel(args, model_config, data_config):
     task = data_config.task
-    if task == "classification":
-        return SatMAEClassification(args, model_config, data_config)
-    elif args.task == "regression":
-        return SatMAERegression(args, model_config, data_config)
+    if task in ["classification",'regression']:
+        return SatMAEClsReg(args, model_config, data_config)
     elif args.task == "segmentation":
         return SatMAESegmentation(args, model_config, data_config)
     else:

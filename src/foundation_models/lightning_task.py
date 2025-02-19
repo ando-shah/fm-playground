@@ -2,7 +2,7 @@
 
 from lightning import LightningModule
 import torch
-from util.misc import resize, cls_metric, seg_metric
+from util.misc import resize, cls_metric, seg_metric, reg_metric
 import torch.nn as nn
 
 try:
@@ -113,7 +113,7 @@ class LightningTask(LightningModule):
         }
 
 
-class LightningClassificationTask(LightningTask):
+class LightningClsRegTask(LightningTask):
 
     encoder: torch.nn.Module
     linear_classifier: torch.nn.Module
@@ -121,11 +121,21 @@ class LightningClassificationTask(LightningTask):
 
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
+        task = data_config.task
 
-        self.criterion = (
-            nn.MultiLabelSoftMarginLoss()
-            if self.data_config.multilabel
-            else nn.CrossEntropyLoss())
+        if task == 'classification':
+            self.criterion = (
+                nn.MultiLabelSoftMarginLoss()
+                if self.data_config.multilabel
+                else nn.CrossEntropyLoss())
+            self.log_metrics = self._log_metrics_cls
+
+        elif task == 'regression':
+            self.criterion = nn.MSELoss()
+            self.log_metrics = self._log_metrics_reg
+
+        else: 
+            raise NotImplementedError()
               
     def freeze_and_return_params(self):
         """ freeze / unfreeze weights & return parameters to optimize 
@@ -175,7 +185,7 @@ class LightningClassificationTask(LightningTask):
     def loss(self, outputs, labels):
         return self.criterion(outputs, labels)
     
-    def log_metrics(self, outputs, targets, prefix="train"):
+    def _log_metrics_cls(self, outputs, targets, prefix="train"):
         """ Calculate accuracy and other classification-specific metrics """
         acc1, acc5 = cls_metric(self.data_config, outputs, targets)
         self.log(
@@ -188,6 +198,11 @@ class LightningClassificationTask(LightningTask):
         self.log(f"{prefix}_acc1", acc1, on_step=True, on_epoch=True, prog_bar=True)
         self.log(f"{prefix}_acc5", acc5, on_step=True, on_epoch=True, prog_bar=True)
 
+    def _log_metrics_reg(self, outputs, targets, prefix="train"):
+        # Calculate accuracy and other classification-specific metrics
+        mse, mae = reg_metric(self.data_config, outputs[0], targets)
+        self.log(f"{prefix}_mse", mse, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"{prefix}_mae", mae, on_step=True, on_epoch=True, prog_bar=True)
 
     def _get_encoder_params_without_head(self, verbose=False, with_name=True):
         if self.dot_str_of_linear_classifier is None:

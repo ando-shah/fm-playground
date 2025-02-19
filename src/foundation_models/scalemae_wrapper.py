@@ -6,7 +6,7 @@ import torch
 import os
 
 # use mmsegmentation for upernet+mae
-from .lightning_task import LightningClassificationTask, LightningSegmentationTask
+from .lightning_task import LightningClsRegTask, LightningSegmentationTask
 from torchvision.datasets.utils import download_url
 
 from .base import LinearHead
@@ -36,7 +36,7 @@ def load_encoder(model_config):
     return encoder
 
 
-class ScaleMAEClassification(LightningClassificationTask):
+class ScaleMAEClsReg(LightningClsRegTask):
 
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
@@ -74,10 +74,8 @@ class ScaleMAESegmentation(LightningSegmentationTask):
 # Model factory for different dinov2 tasks
 def ScaleMAEModel(args, model_config, data_config):
     task = data_config.task
-    if task == "classification":
-        return ScaleMAEClassification(args, model_config, data_config)
-    elif args.task == "regression":
-        return ScaleMAERegression(args, model_config, data_config)
+    if task in ["classification",'regression']:
+        return ScaleMAEClsReg(args, model_config, data_config)
     elif args.task == "segmentation":
         return ScaleMAESegmentation(args, model_config, data_config)
     else:

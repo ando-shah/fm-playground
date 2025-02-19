@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 
-from .lightning_task import LightningClassificationTask, LightningSegmentationTask
+from .lightning_task import LightningClsRegTask, LightningSegmentationTask
 
 
 
@@ -11,7 +11,7 @@ def load_encoder():
     return encoder
 
 
-class AnySatClassification(LightningClassificationTask):
+class AnySatClsReg(LightningClsRegTask):
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
 
@@ -48,10 +48,8 @@ class AnySatSegmentation(LightningSegmentationTask):
 # Model factory for different dinov2 tasks
 def AnySatModel(args, model_config, data_config):
     task = data_config.task
-    if task == "classification":
-        return AnySatClassification(args, model_config, data_config)
-    elif args.task == "regression":
-        return AnySatRegression(args, model_config, data_config)
+    if task in ["classification",'regression']:
+        return AnySatClsReg(args, model_config, data_config)
     elif args.task == "segmentation":
         return AnySatSegmentation(args, model_config, data_config)
     else:

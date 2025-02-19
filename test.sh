@@ -15,17 +15,17 @@
 
 export $(cat /home/hk-project-pai00028/tum_mhj8661/code/fm-playground/.env)
 export PYTHONPATH='/home/hk-project-pai00028/tum_mhj8661/code/fm-playground:/home/hk-project-pai00028/tum_mhj8661/code/PanOpticOn'
-cmd='/home/hk-project-pai00028/tum_mhj8661/miniforge3/envs/eval/bin/python /home/hk-project-pai00028/tum_mhj8661/code/fm-playground/src/main.py'
+cmd='/home/hk-project-pai00028/tum_mhj8661/miniforge3/envs/eval/bin/python /home/hk-project-pai00028/tum_mhj8661/code/fm-playground/geofm_src/main.py'
 
 all_tasks=(
     ######## classification
-    'croma_s2 linear_probe geobench_eurosat_12b'
-    'dofa_b linear_probe geobench_eurosat'
-    'softcon_B13_b linear_probe geobench_eurosat'
-    'stealth linear_probe geobench_eurosat'
+    # 'croma_s2 linear_probe geobench_eurosat_12b'
+    # 'dofa_b linear_probe geobench_eurosat'
+    # 'softcon_B13_b linear_probe geobench_eurosat'
+    # 'stealth linear_probe geobench_eurosat'
     'dinov2 linear_probe geobench_eurosat_rgb'    
-    'anysat linear_probe geobench_eurosat_rgb'
-    'senpamae linear_probe geobench_eurosat'
+    # 'anysat linear_probe geobench_eurosat_rgb'
+    # 'senpamae linear_probe geobench_eurosat'
 )
 
 for task in "${all_tasks[@]}"

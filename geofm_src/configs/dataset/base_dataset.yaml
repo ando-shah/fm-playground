@@ -1,5 +1,5 @@
 dataset_type: null
-task: null  # Options: "classification", "segmentation"
+task: null  # Options: "classification", "segmentation", 'regressopm'
 num_classes: null
 num_channels: null
 data_path: null
@@ -7,4 +7,7 @@ wavelengths_mean_nm: null
 wavelengths_sigma_nm: null
 multilabel: null
 image_resolution: null #what resolution to use for the images
-
+subset:
+  train: -1
+  val: -1
+  test: -1

@@ -23,15 +23,16 @@ from geofm_src.datasets.dummy_dataset import DummyWrapper
 
 model_registry = {
     "croma": CromaModel,
-    "scalemae": ScaleMAEModel,
-    "gfm": GFMModel,
     "dinov2": DinoV2Model,
     "softcon": SoftConModel,
     "dofa": DofaModel,
-    "satmae": SatMAEModel,
     "anysat": AnySatModel,
     "senpamae": SenPaMAEModel,
     "stealth": StealthModel,
+
+    "satmae": SatMAEModel,
+    "scalemae": ScaleMAEModel,
+    "gfm": GFMModel,
     # Add other model mappings here
 }
 
@@ -43,7 +44,6 @@ dataset_registry = {
     "digital_typhoon": DigitalTyphoonDataset,
     "tropical_cyclone": TropicalCycloneDataset,
     "hyperview": HyperviewDataset,
-    # Add other dataset mappings here
     "dummy": DummyWrapper,
     # Add other dataset mappings here
 }

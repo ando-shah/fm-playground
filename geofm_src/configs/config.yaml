@@ -5,6 +5,7 @@ defaults:
 
 training_mode: null
 
+base_lr: -1
 lr: -1
 weight_decay: 0.0001
 epochs: 30
@@ -16,5 +17,10 @@ pin_mem: true
 num_gpus: 1
 
 seed: 0
-output_dir: ./output_dir
+output_dir: null
+output_dir_suffix: null
 resume: null
+logger: mlflow
+overwrite: true
+
+trainer_kwargs: null # additional kwargs for the lightning trainer

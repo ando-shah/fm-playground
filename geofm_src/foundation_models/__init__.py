@@ -9,7 +9,23 @@ from .satmae_wrapper import SatMAEModel
 from .anysat_wrapper import AnySatModel  # type: ignore
 from .senpamae_wrapper import SenPaMAEModel
 from .base import LinearHead
+from .galileo_wrapper import GalileoModel
 try:
     from .stealth_wrapper import StealthModel
 except ImportError:
     StealthModel = None
+
+__all__ = (
+    "CromaModel",
+    "ScaleMAEModel",
+    "GFMModel",
+    "DinoV2Model",
+    "SoftConModel",
+    "DofaModel",
+    "SatMAEModel",
+    "AnySatModel",
+    "SenPaMAEModel",
+    "LinearHead",
+    "GalileoModel",
+    "StealthModel"
+)

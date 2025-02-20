@@ -10,7 +10,8 @@ from geofm_src.foundation_models import (
     SatMAEModel,
     AnySatModel,
     SenPaMAEModel,
-    StealthModel
+    GalileoModel,
+    StealthModel,
 )
 from geofm_src.datasets.geobench_wrapper import GeoBenchDataset
 from geofm_src.datasets.resisc_wrapper import Resics45Dataset
@@ -29,7 +30,7 @@ model_registry = {
     "anysat": AnySatModel,
     "senpamae": SenPaMAEModel,
     "stealth": StealthModel,
-
+    "galileo": GalileoModel,
     "satmae": SatMAEModel,
     "scalemae": ScaleMAEModel,
     "gfm": GFMModel,
@@ -54,7 +55,7 @@ def create_dataset(config_data):
     dataset_class = dataset_registry.get(dataset_type)
     if dataset_class is None:
         raise ValueError(f"Dataset type '{dataset_type}' not found.")
-    
+
     dataset = dataset_class(config_data)
 
     return dataset.create_dataset()
@@ -64,8 +65,10 @@ def create_model(args, model_config, dataset_config=None):
     model_name = model_config.model_type
     model_class = model_registry.get(model_name)
     if model_class is None:
-        if model_name == 'stealth':
-            raise ImportError("Stealth model requires the stealth_wrapper to be available")
+        if model_name == "stealth":
+            raise ImportError(
+                "Stealth model requires the stealth_wrapper to be available"
+            )
         raise ValueError(f"Model type '{model_name}' not found.")
 
     model = model_class(args, model_config, dataset_config)

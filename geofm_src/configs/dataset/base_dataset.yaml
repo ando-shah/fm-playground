@@ -11,3 +11,4 @@ subset:
   train: -1
   val: -1
   test: -1
+input_key: null

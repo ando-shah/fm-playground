@@ -32,28 +32,37 @@ def print_trainable_parameters(model):
 
 @hydra.main(config_path="configs", config_name="config")
 def main(cfg: DictConfig):
-    is_fastdevrun = cfg.trainer.get('fast_dev_run', False)
+    is_fastdevrun = cfg.trainer.get("fast_dev_run", False)
 
     # setup output dir
     if cfg.output_dir is None:
         experiment_name = f"{cfg.model.model_type}/{cfg.model.training_mode}/{cfg.dataset.dataset_name}"
         args_defining_run = {
-            'lr': 'lr',
-            'batch_size': 'bsz',
-            'epochs': 'e',}
-        assert all([not '.' in k for k in args_defining_run.keys()]), "cannot contain nested '.' yet"
-        run_name = '_'.join([f"{v}={cfg[k]}" for k,v in args_defining_run.items()])
+            "lr": "lr",
+            "batch_size": "bsz",
+            "epochs": "e",
+        }
+        assert all([not "." in k for k in args_defining_run.keys()]), (
+            "cannot contain nested '.' yet"
+        )
+        run_name = "_".join([f"{v}={cfg[k]}" for k, v in args_defining_run.items()])
 
-        suff = cfg.output_dir_suffix if cfg.output_dir_suffix is not None else ''
-        cfg.output_dir = os.path.join(os.environ['ODIR'], experiment_name, suff, run_name)
+        suff = cfg.output_dir_suffix if cfg.output_dir_suffix is not None else ""
+        cfg.output_dir = os.path.join(
+            os.environ["ODIR"], experiment_name, suff, run_name
+        )
 
     else:
-        assert cfg.output_dir_suffix is None, "output_dir_suffix is only used when output_dir is not set"
+        assert cfg.output_dir_suffix is None, (
+            "output_dir_suffix is only used when output_dir is not set"
+        )
         experiment_name = os.path.basename(os.path.normpath(cfg.output_dir))
-        run_name = f"{experiment_name}_run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        run_name = (
+            f"{experiment_name}_run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        )
 
     # check if task already executed
-    if os.path.exists(os.path.join(cfg.output_dir, 'results.csv')):
+    if os.path.exists(os.path.join(cfg.output_dir, "results.csv")):
         if cfg.overwrite:
             print(f"Overwriting existing output dir: {cfg.output_dir}")
         else:
@@ -70,19 +79,18 @@ def main(cfg: DictConfig):
 
     # print & save config
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
-    OmegaConf.save(cfg, os.path.join(cfg.output_dir, 'config.yaml'))
+    OmegaConf.save(cfg, os.path.join(cfg.output_dir, "config.yaml"))
     print(OmegaConf.to_yaml(cfg))
-
 
     # Setup logger
     if cfg.logger == "mlflow":
         logger = MLFlowLogger(
             experiment_name=experiment_name,
             run_name=run_name,
-            tracking_uri=f"file:{os.path.join(os.environ['ODIR'], '_mlruns')}",)
-    elif cfg.logger == 'wandb':
+            tracking_uri=f"file:{os.path.join(os.environ['ODIR'], '_mlruns')}",
+        )
+    elif cfg.logger == "wandb":
         raise NotImplementedError()
-
 
     # Callbacks
     model_monitor = "val_miou" if task == "segmentation" else "val_acc1"
@@ -99,36 +107,38 @@ def main(cfg: DictConfig):
 
     # Initialize trainer
 
-    if cfg.num_gpus == 0: # cpu
+    if cfg.num_gpus == 0:  # cpu
         trainer = Trainer(
             logger=logger,
             callbacks=callbacks,
-            accelerator='cpu',
+            accelerator="cpu",
             max_epochs=cfg.epochs,
             num_sanity_val_steps=0,
-            **cfg.trainer)
+            **cfg.trainer,
+        )
 
-    elif cfg.num_gpus == 1: # single gpu
+    elif cfg.num_gpus == 1:  # single gpu
         trainer = Trainer(
             logger=logger,
             callbacks=callbacks,
-            accelerator='gpu',
+            accelerator="gpu",
             devices=cfg.num_gpus,
             max_epochs=cfg.epochs,
             num_sanity_val_steps=0,
-            **cfg.trainer)
+            **cfg.trainer,
+        )
 
-    else: # ddp on multiple gpus
+    else:  # ddp on multiple gpus
         trainer = Trainer(
             logger=logger,
             callbacks=callbacks,
-            accelerator='gpu',
+            accelerator="gpu",
             strategy=DDPStrategy(find_unused_parameters=False),
             devices=cfg.num_gpus,
             max_epochs=cfg.epochs,
             num_sanity_val_steps=0,
-            **cfg.trainer)
-        
+            **cfg.trainer,
+        )
 
     # Initialize data module
     cfg.dataset.image_resolution = cfg.model.image_resolution
@@ -137,7 +147,7 @@ def main(cfg: DictConfig):
         batch_size=cfg.batch_size,
         num_workers=cfg.num_workers,
         pin_memory=cfg.pin_mem,
-        seed = cfg.seed,
+        seed=cfg.seed,
     )
 
     # Create model (assumed to be a LightningModule)
@@ -148,17 +158,18 @@ def main(cfg: DictConfig):
     trainer.fit(model, data_module, ckpt_path=cfg.resume if cfg.resume else None)
 
     if is_fastdevrun:
-        print('No eval for fastdevrun.')
+        print("No eval for fastdevrun.")
         return
 
     # Test
     best_checkpoint_path = callbacks[0].best_model_path
     results_list = trainer.test(model, data_module, ckpt_path=best_checkpoint_path)
-    results_dict = {k:v for l in results_list for k,v in l.items()}
+    results_dict = {k: v for l in results_list for k, v in l.items()}
     results = pd.DataFrame([results_dict])
 
     # save results
-    results.to_csv(os.path.join(cfg.output_dir, 'results.csv'), index=False)
+    results.to_csv(os.path.join(cfg.output_dir, "results.csv"), index=False)
+
 
 if __name__ == "__main__":
     os.environ["MODEL_WEIGHTS_DIR"] = os.getenv("MODEL_WEIGHTS_DIR", "./fm_weights")

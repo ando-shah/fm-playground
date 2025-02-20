@@ -3,7 +3,6 @@ defaults:
 - dataset: null
 - _self_
 
-training_mode: null
 
 base_lr: -1
 lr: -1

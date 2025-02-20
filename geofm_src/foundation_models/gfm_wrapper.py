@@ -1,4 +1,4 @@
-from .lightning_task import LightningClsRegTask, LightningSegmentationTask
+from geofm_src.engine.lightning import LightningClsRegTask, LightningSegmentationTask
 from .GFM import build_swin_cls, build_swin_seg
 import torch.nn as nn
 
@@ -9,7 +9,7 @@ from mmseg.models.decode_heads import UPerHead, FCNHead
 from timm.models.layers import trunc_normal_
 from ..util.misc import resize
 
-from .base import LinearHead
+from geofm_src.engine.base import LinearHead
 
 
 def load_encoder(model_config, data_config):

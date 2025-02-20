@@ -45,7 +45,8 @@ dependencies = [
     "huggingface-hub>=0.27.1",
     "peft>=0.14.0",
     "optuna",
-    "tifffile"
+    "tifffile",
+    "fvcore"
 ]
 
 [tool.pytest.ini_options]

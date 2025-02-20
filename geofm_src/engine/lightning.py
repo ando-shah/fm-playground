@@ -4,12 +4,16 @@ from lightning import LightningModule
 import torch
 from util.misc import resize, cls_metric, seg_metric, reg_metric
 import torch.nn as nn
+from .model import EvalModelWrapper
+from einops import rearrange 
 
 try:
     from mmseg.models.necks import Feature2Pyramid
     from mmseg.models.decode_heads import UPerHead, FCNHead
+    MMSEGM_AVAIL = True
 except:
     print("MMSEG not installed, skipping imports")
+    MMSEGM_AVAIL = False
 
 
 class LightningTask(LightningModule):
@@ -54,28 +58,6 @@ class LightningTask(LightningModule):
         for p in self._proc_param_obj(obj):
             p.requires_grad = True
 
-    def training_step(self, batch, batch_idx):
-        # current_lr = self.optimizers().param_groups[0]['lr']
-        images, targets = batch
-        outputs = self(images)
-        loss = self.loss(outputs, targets)
-        self.log_metrics(outputs, targets, prefix="train")
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        images, targets = batch
-        outputs = self(images)
-        loss = self.loss(outputs, targets)
-        self.log_metrics(outputs, targets, prefix="val")
-        return loss
-
-    def test_step(self, batch, batch_idx):
-        images, targets = batch
-        outputs = self(images)
-        loss = self.loss(outputs, targets)
-        self.log_metrics(outputs, targets, prefix="test")
-        return loss
-
     def configure_optimizers(self):
         if self.data_config.task in ["classification", "regression"]:
             optimizer = torch.optim.SGD(
@@ -115,9 +97,9 @@ class LightningTask(LightningModule):
 
 class LightningClsRegTask(LightningTask):
 
-    encoder: torch.nn.Module
+    encoder: EvalModelWrapper
     linear_classifier: torch.nn.Module
-    dot_str_of_linear_classifier: str  # state_dict key to the linear classifier if assigned to the encoder, else empty
+    # dot_str_of_linear_classifier: str  # state_dict key to the linear classifier if assigned to the encoder, else empty
 
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
@@ -182,6 +164,30 @@ class LightningClsRegTask(LightningTask):
 
         return params_to_optimize
     
+    def _step(self, batch, batch_idx, prefix="train"):
+        images, targets = batch
+        
+        if self.training_mode == 'linear_probe':
+            with torch.no_grad():
+                x = self.encoder.get_blocks(images)
+        else:
+            x = self.encoder.get_blocks(images)
+        x = self.encoder.default_blocks_to_featurevec(x)
+        outputs = self.linear_classifier(x)
+
+        loss = self.loss(outputs, targets)
+        self.log_metrics(outputs, targets, prefix)
+        return loss
+
+    def training_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, prefix="train")
+
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, prefix="val")
+    
+    def test_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, prefix="test")
+
     def loss(self, outputs, labels):
         return self.criterion(outputs, labels)
     
@@ -234,6 +240,7 @@ class LightningSegmentationTask(LightningTask):
 
     def __init__(self, args, model_config, data_config):
         super().__init__(args, model_config, data_config)
+        assert MMSEGM_AVAIL, "MMSEG needs to be installed"
         self.embed_dim = model_config.embed_dim
         self.criterion = nn.CrossEntropyLoss()
 
@@ -293,6 +300,12 @@ class LightningSegmentationTask(LightningTask):
 
     def forward(self, samples):
         feats = self._forward_feats(samples)
+
+        feats = [
+            rearrange(out, "n (h w) c -> n c h w", h=int(out.size(1) ** 0.5))
+            for out in feats
+        ]
+
         feats = self.neck(feats)
         out = self.decoder(feats)
         out = resize(out, size=samples.shape[2:], mode="bilinear", align_corners=False)

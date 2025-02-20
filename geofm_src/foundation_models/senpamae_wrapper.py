@@ -1,67 +1,56 @@
 import torch
 import os
-import torch.nn as nn
-from mmseg.models.necks import Feature2Pyramid
-from mmseg.models.decode_heads import UPerHead, FCNHead
-
-from .lightning_task import LightningClsRegTask, LightningSegmentationTask
-from timm.models.layers import trunc_normal_
-from ..util.misc import resize, seg_metric, cls_metric
 from torchvision.datasets.utils import download_url
 from peft import LoraConfig, get_peft_model
 from .SenPaMAE.model import vit_base_patch16
 import numpy as np
+from geofm_src.engine.model import EvalModelWrapper
 
-from .base import LinearHead
 
 
-def load_encoder(model_config):
-    # url = 'https://drive.usercontent.google.com/download?id=16IoG47yzdyUnPqUgaV8ofeja5RgQjlAz&export=download&authuser=0&confirm=t&uuid=9e279667-af3a-4f3a-a648-bec3452a1450&at=AIrpjvMEDRsz82ufHQy8sUmSk5j5%3A1739180929862'
+
+class SenPaMAEWrapper(EvalModelWrapper):
     URL = "https://drive.google.com/file/d/16IoG47yzdyUnPqUgaV8ofeja5RgQjlAz"
-        
-    encoder = vit_base_patch16(
-        image_size=model_config.image_resolution,
-        num_channels=model_config.num_channels,
-        emb_dim=model_config.embed_dim,
-    )
+    # url = 'https://drive.usercontent.google.com/download?id=16IoG47yzdyUnPqUgaV8ofeja5RgQjlAz&export=download&authuser=0&confirm=t&uuid=9e279667-af3a-4f3a-a648-bec3452a1450&at=AIrpjvMEDRsz82ufHQy8sUmSk5j5%3A1739180929862'
 
-    # look for pretrained weights
-    if model_config.get("pretrained_path", None):
-        path = model_config.pretrained_path
-        if not os.path.exists(path):
-            raise NotImplementedError('Need to manually download weights from above link')
-            download_url(
-                URL.format(os.path.basename(path)),
-                os.path.dirname(path),
-                filename=os.path.basename(path),
-            )
-        # Load pretrained weights
+    def load_encoder(self, blk_indices):
+        model_config = self.model_config
+
+        encoder = vit_base_patch16(
+            image_size=model_config.image_resolution,
+            num_channels=model_config.num_channels,
+            emb_dim=model_config.embed_dim,
+        )
+
+        # download weights
+        if model_config.get("pretrained_path", None):
+            path = model_config.pretrained_path
+            if not os.path.exists(path):
+                raise NotImplementedError('Need to manually download weights from above link')
+                download_url(
+                    URL.format(os.path.basename(path)),
+                    os.path.dirname(path),
+                    filename=os.path.basename(path),
+                )
+
+        # load weights
         check_point = torch.load(path, map_location="cpu")
         encoder.load_state_dict(check_point, strict=False)
 
-    return encoder
+        # register fwd hooks
+        for idx in blk_indices:
+            encoder.transformer[idx].register_forward_hook(
+                lambda m, i, o: self._cache_block(o))
 
+        # set variables
+        self.encoder = encoder
+        self.norm = self.encoder.layer_norm
 
-class SenPaMAEClsReg(LightningClsRegTask):
-
-    def __init__(self, args, model_config, data_config):
-        super().__init__(args, model_config, data_config)
-
-        self.encoder = load_encoder(model_config)
-
-        # LoRA
-        # if self.lora and model_config.lora:
-        #     self.apply_peft(self.encoder, lora_cfg=model_config.lora)
-
-        # setup linear head
-        self.linear_classifier = LinearHead(
-            in_features=model_config.embed_dim, num_classes=data_config.num_classes)
-        trunc_normal_(self.linear_classifier.head[1].weight, std=0.01)
-        self.encoder.head = self.linear_classifier
-        self.dot_str_of_linear_classifier = 'head'
-
-        self.freeze_and_return_params()
         self.process_srfs()
+
+    def _cache_block(self,x):
+        self.cache.append(x)
+
 
     def process_srfs(self):
         # SRF loading
@@ -115,34 +104,22 @@ class SenPaMAEClsReg(LightningClsRegTask):
         # Wrap the encoder with PEFT
         self.encoder = get_peft_model(encoder, peft_config)
 
-    def forward(self, x):
-        # subset channels
+
+    def get_blocks(self, x):
+        self.cache = []
+
         x = x[:, self.data_config.senpamae_channels, :, :]
 
         device = x.device
         srf = self.srf.to(device)
         gsd = self.band_gsds.to(device)
+        self.encoder(x, gsd=gsd, rf=srf)
 
-        # apply SRF
-        x, _ = self.encoder(x, gsd=gsd, rf=srf)
-        # swap 0 and 1 dims
-        x = x.permute(1, 0, 2)  # (batch, tokens, features)
+        blocks_list = self.cache
+        self.cache = []
 
-        # mean pool over token dimension
-        x = x.mean(dim=1)
-        x = self.encoder.head(x)
+        return blocks_list
 
-        return x
-
-
-
-
-# Model factory for different dinov2 tasks
-def SenPaMAEModel(args, model_config, data_config):
-    task = data_config.task
-    if task in ["classification",'regression']:
-        return SenPaMAEClsReg(args, model_config, data_config)
-    # elif task == "segmentation":
-    #     return DofaSegmentation(args, model_config, data_config)
-    else:
-        raise NotImplementedError("Task not supported")
+    def default_blocks_to_featurevec(self, block_list):
+        # no official recommendation by the authors, using this for now
+        return self.norm(block_list[-1]).mean(dim=1)

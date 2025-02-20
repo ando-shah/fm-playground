@@ -151,10 +151,13 @@ class PretrainedCROMA(nn.Module):
             assert SAR_images is not None, (
                 f"Modality is set to {self.modality}, but SAR_images are None"
             )
-            SAR_encodings = self.s1_encoder(
+            SAR_encodings, out_feats = self.s1_encoder(
                 imgs=SAR_images, attn_bias=self.attn_bias.to(SAR_images.device)
             )  # (bsz, num_patches, encoder_dim)
-            SAR_GAP = self.s1_GAP_FFN(SAR_encodings.mean(dim=1))  # (bsz, encoder_dim)
+            return_dict["out_feats"] = out_feats
+            SAR_GAP = self.s1_GAP_FFN(
+                SAR_encodings.mean(dim=1)
+            )  # (bsz, encoder_dim)
             return_dict["SAR_encodings"] = SAR_encodings
             return_dict["SAR_GAP"] = SAR_GAP
 
@@ -365,7 +368,7 @@ class BaseTransformer(nn.Module):
             self.norm_out = nn.LayerNorm(dim)
 
     def forward(self, x, relative_position_bias=False):
-        out_indices = [3, 5, 7, 11]
+        out_indices = self.out_indices
         i = 0
         out_features = []
 

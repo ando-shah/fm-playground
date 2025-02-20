@@ -10,11 +10,11 @@ import torch.nn as nn
 import torch
 import os
 
-from .lightning_task import LightningClsRegTask, LightningSegmentationTask
+from geofm_src.engine.lightning import LightningClsRegTask, LightningSegmentationTask
 
 from torchvision.datasets.utils import download_url
 
-from .base import LinearHead
+from geofm_src.engine.base import LinearHead
 
 
 def load_encoder(model_config):

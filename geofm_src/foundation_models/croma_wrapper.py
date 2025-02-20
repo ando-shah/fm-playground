@@ -1,84 +1,65 @@
-from .lightning_task import LightningClsRegTask, LightningSegmentationTask
+from geofm_src.engine.lightning import LightningClsRegTask, LightningSegmentationTask
 from .CROMA.use_croma import PretrainedCROMA
 import torch
 import os
 from torchvision.datasets.utils import download_url
-from .base import LinearHead
+from geofm_src.engine.base import LinearHead
+from einops import rearrange
+
+from geofm_src.engine.model import EvalModelWrapper 
 
 
-def load_encoder(model_config):
+class CromaWrapper(EvalModelWrapper):
     URL = "https://huggingface.co/antofuller/CROMA/resolve/main/{}"
 
-    if model_config.get("pretrained_path", None):
-        path = model_config.pretrained_path
-        if not os.path.exists(path):
-            # download the weights from HF
-            download_url(
-                URL.format(os.path.basename(path)),
-                os.path.dirname(path),
-                filename=os.path.basename(path),
-            )
-    else:
-        path = None
+    def load_encoder(self, blk_indices):
+        model_config = self.model_config
 
-    modality = model_config.modality
-    encoder = PretrainedCROMA(
-        pretrained_path=path,
-        size=model_config.size,
-        modality=modality,
-        image_resolution=model_config.image_resolution,)
+        if model_config.get("pretrained_path", None):
+            path = model_config.pretrained_path
+            if not os.path.exists(path):
+                # download the weights from HF
+                download_url(
+                    self.URL.format(os.path.basename(path)),
+                    os.path.dirname(path),
+                    filename=os.path.basename(path),
+                )
+        else:
+            path = None
 
-    if modality == "optical":
-        encoder.s2_GAP_FFN = torch.nn.Identity()
-    elif modality == "SAR":
-        encoder.s1_GAP_FFN = torch.nn.Identity()
+        modality = model_config.modality
+        encoder = PretrainedCROMA(
+            pretrained_path=path,
+            size=model_config.size,
+            modality=modality,
+            image_resolution=model_config.image_resolution,)
 
-    return encoder
+        if modality == "optical":
+            self.norm = encoder.s2_encoder.transformer.norm_out 
+            encoder.s2_encoder.transformer.out_indices = blk_indices 
+            encoder.s2_GAP_FFN = torch.nn.Identity()
 
+        elif modality == "SAR":
+            self.norm = encoder.s1_encoder.transformer.norm_out
+            encoder.s1_encoder.transformer.out_indices = blk_indices 
+            encoder.s1_GAP_FFN = torch.nn.Identity()
 
+        self.encoder = encoder
+    
 
-class CromaClsReg(LightningClsRegTask):
-
-    def __init__(self, args, model_config, data_config):
-        super().__init__(args, model_config, data_config)
-
-        self.encoder = load_encoder(model_config)
-
-        self.linear_classifier = LinearHead(
-            in_features=self.encoder.encoder_dim, num_classes=data_config.num_classes)
-        self.dot_str_of_linear_classifier = None
-
-        self.freeze_and_return_params()
-
-    def forward(self, x):
+    def get_blocks(self, x):
         mod = self.model_config.modality
-        x = self.encoder(**{f"{mod}_images": x})
-        x = x[f"{mod}_encodings"]
-        x = self.linear_classifier(x)
-        return x
+        out = self.encoder(**{f"{mod}_images": x})
+        out_features = out['out_feats']
 
+        # rearrange to requested dim
+        out_features = [
+            rearrange(out, "b c p q -> b (p q) c")
+            for out in out_features
+        ]
 
-class CromaSegmentation(LightningSegmentationTask):
-    def __init__(self, args, model_config, data_config):
-        super().__init__(args, model_config, data_config)
-
-        self.encoder = load_encoder(model_config)
-        self._build_default_segm_modules()
-        self.freeze_and_return_params()
-
-    def _forward_feats(self, x):
-        mod = self.model_config.modality
-        x = self.encoder(**{f'{mod}_images': x})["out_feats"]
-        return x
-
-
-
-# Model factory for different dinov2 tasks
-def CromaModel(args, model_config, data_config):
-    task = data_config.task
-    if task in ["classification",'regression']:
-        return CromaClsReg(args, model_config, data_config)
-    elif task == "segmentation":
-        return CromaSegmentation(args, model_config, data_config)
-    else:
-        raise NotImplementedError("Task not supported")
+        return out_features
+    
+    def default_blocks_to_featurevec(self, block_list):
+        # the following is how the tokens are passed into the {mod}_GAP_FFN networks
+        return self.norm(block_list[-1]).mean(dim=1)

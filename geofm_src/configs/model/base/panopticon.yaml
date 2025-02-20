@@ -1,0 +1,11 @@
+model_type: panopticon
+image_resolution: 224
+embed_dim: 768
+
+run_dir: /hkfs/work/workspace/scratch/tum_mhj8661-panopticon/dino_logs/abl_a3_s2/sar/model=topdim_ds=mme
+
+
+segm_blk_indices: [3, 5, 7, 11]
+accel_cls_blk_indices: [8, 9, 10, 11]
+default_cls_blk_indices: [11]
+default_feat_out_dim: 768

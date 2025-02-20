@@ -57,20 +57,9 @@ def blocks_to_cls(blocks_list, use_n_blocks, pooling, norm=None, default_blocks_
         class_tokens = [x[:, 0] for x in blocks_list]
         output = torch.cat(class_tokens, dim=-1)
 
-    elif pooling == 'DOFA_globalpool':
-        output = blocks_list[-1][:, 1:].mean(dim=1)
-        output = norm(output) 
-
-    elif pooling == 'DOFA_no_globalpool':
-        output = blocks_list[-1][:, 0]
-        output = norm(output.unsqueeze(0)).squeeze(0)
-
-    elif pooling == 'knn': # consistent with vanilla DINOv2 eval knn
-        output = norm(blocks_list[-1])[:,0]
+    elif pooling == 'normalized_default': # consistent with vanilla DINOv2 eval knn
+        output = default_blocks_to_featurevec(blocks_list)
         output = nn.functional.normalize(output, dim=1, p=2) # need to normalize knn! Big performance drop if not done ..
-
-    elif pooling == 'lin': # consistent with vanilla DINOv2 .forward()
-        output = norm(blocks_list[-1])[:,0]
 
     elif pooling == 'default':
         output = default_blocks_to_featurevec(blocks_list)

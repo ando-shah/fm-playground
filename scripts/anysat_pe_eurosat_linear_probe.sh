@@ -35,6 +35,8 @@ model=${model} \
 +model.training_mode=${training_mode} \
 +model.params_to_train=${params_to_train} \
 dataset.input_key=s2 \
+dataset.image_resolution=128 \
+model.image_resolution=128 \
 \
 lr=${lr} \
 epochs=${epochs} \

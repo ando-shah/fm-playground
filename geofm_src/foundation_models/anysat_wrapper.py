@@ -73,7 +73,13 @@ class AnySatClsReg(LightningClsRegTask):
         x = format_input(x, self.data_config.input_key)
         # https://github.com/gastruc/AnySat?tab=readme-ov-file#extract-features
         # patch size must be multiple of 10
-        x = self.encoder(x, patch_size=10, output="tile")
+        if self.training_mode == 'linear_probe':
+            with torch.no_grad():
+                x = self.encoder(x, patch_size=10, output="tile")
+        else:
+            x = self.encoder(x, patch_size=10, output="tile")
+        print("ENCODED X")
+        print(x)
         x = self.linear_classifier(x)
         return x
 

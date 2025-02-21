@@ -1,3 +1,11 @@
 model_type: anysat
 embed_dim: 768
 image_resolution: 224
+
+anysat_torchhub_id: anysat
+
+segm_blk_indices: [3, 5, 7, 11]
+accel_cls_blk_indices: [5]
+default_cls_blk_indices: [5]
+
+input_key: s2

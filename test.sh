@@ -5,15 +5,15 @@ cmd='python geofm_src/main.py'
 
 all_tasks=(
     ######## classification
-    'base/croma_s2 linear_probe geobench_eurosat_12b'
-    'base/dofa linear_probe geobench_eurosat'
-    'base/dinov2 linear_probe geobench_eurosat_rgb'    
-    'base/softcon_B13 linear_probe geobench_eurosat'
-    'base/panopticon linear_probe geobench_eurosat'
-    'base/senpamae linear_probe geobench_eurosat'
+    # 'base/croma_s2 linear_probe geobench_eurosat_12b'
+    # 'base/dofa linear_probe geobench_eurosat'
+    # 'base/dinov2 linear_probe geobench_eurosat_rgb'    
+    # 'base/softcon_B13 linear_probe geobench_eurosat'
+    # 'base/panopticon linear_probe geobench_eurosat'
+    # 'base/senpamae linear_probe geobench_eurosat'
+    'base/croma_s1 linear_probe benv2_s1'
 
     ######## not checked
-    # 'base/croma_s1 linear_probe geobench_eurosat_2b'
     # 'base/anysat linear_probe geobench_eurosat_rgb'
 )
 

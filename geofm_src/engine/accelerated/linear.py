@@ -16,7 +16,7 @@ import torch.nn as nn
 from fvcore.common.checkpoint import Checkpointer, PeriodicCheckpointer
 
 
-from .utils.logging import MetricLogger
+from .utils.logging import MetricLogger, update_linear_probe_metrics
 from .utils.utils import evaluate, blocks_to_cls, remove_ddp_wrapper
 from .utils.data import make_data_loader, SamplerType
 from .utils.metrics import build_metric, build_criterion
@@ -173,43 +173,49 @@ def evaluate_linear_classifiers(
 
     num_classes = len(class_mapping) if class_mapping is not None else training_num_classes
     metrics = build_metric(metrics, num_classes=num_classes)
-    metric_names = metrics.keys()
     postprocessors = {k: LinearPostprocessor(v, class_mapping) for k, v in linear_classifiers.classifiers_dict.items()}
-    metrics = {k: metrics.clone() for k in linear_classifiers.classifiers_dict}
+    metrics_for_each_classifier = {k: metrics.clone() for k in linear_classifiers.classifiers_dict}
 
-    _, metrics_results_dict = evaluate(
+    _, all_metrics_results_dict = evaluate(
         feature_model,
         data_loader,
         postprocessors,
-        metrics,
+        metrics_for_each_classifier,
         torch.cuda.current_device(),
     )
 
     # print metrics
     logger.info("")
-    for classifier_string, metric in metrics_results_dict.items():
+    for classifier_string, metric in all_metrics_results_dict.items():
         metric = {k: round(v.item()*100, 2) for k, v in metric.items()}
         print_metrics_str = ", ".join([f"{k}: {v}" for k, v in metric.items()])
         logger.info(f"{prefixstring} -- Classifier: {classifier_string} * {print_metrics_str}")
 
     # find best classifiers by metric
     results_list = []
-    for target_metric in metric_names:
-        max_val = 0
+    for target_metric in metrics.keys():
+        higher_is_better = metrics[target_metric].higher_is_better
+        if higher_is_better:
+            best_val = 0
+            is_better = lambda newval, bestval: newval > bestval
+        else:
+            best_val = float("inf")
+            is_better = lambda newval, bestval: newval < bestval
+
         best_classifier = ""
-        for classifier_string, metric in metrics_results_dict.items():
+        for classifier_string, metric in all_metrics_results_dict.items():
             
             val = metric[target_metric].item()
             if (
-                best_classifier_on_val is None and val > max_val
+                best_classifier_on_val is None and is_better(val, best_val)
             ) or classifier_string == best_classifier_on_val:
-                max_val = val
+                best_val = val
                 best_classifier = classifier_string
         results_list.append(dict(
             best_classifier = best_classifier,
-            val = max_val,
+            val = best_val,
             metric_str = target_metric,))
-        logger.info(f"best classifier by {target_metric} with {max_val}: {best_classifier}")
+        logger.info(f"Best classifier by {target_metric} (higher_is_better={higher_is_better}) with {best_val}: {best_classifier}")
 
     if distributed.is_main_process():
         with open(metrics_file_path, "a") as f:
@@ -220,7 +226,7 @@ def evaluate_linear_classifiers(
                 result_dict.pop('prefix')
             f.write("\n")
 
-    return results_list
+    return results_list, all_metrics_results_dict
 
 
 def eval_linear(
@@ -286,6 +292,7 @@ def eval_linear(
             torch.cuda.synchronize()
             metric_logger.update(loss=loss.item() / len(losses.values()))
             metric_logger.update(lr=optimizer.param_groups[0]["lr"]) # only to get idea of lr cycle
+            metric_logger.update_linear_probe_losses(losses)
 
         if distributed.is_main_process():
             torch.cuda.synchronize()
@@ -293,7 +300,7 @@ def eval_linear(
             torch.cuda.synchronize()
 
         if eval_period_iter > 0 and (iteration + 1) % int(eval_period_iter) == 0 and iteration != max_iter - 1:
-            _ = evaluate_linear_classifiers(
+            _, all_metrics_results_dict = evaluate_linear_classifiers(
                 feature_model=feature_model,
                 linear_classifiers=remove_ddp_wrapper(linear_classifiers),
                 data_loader=val_data_loader,
@@ -303,17 +310,20 @@ def eval_linear(
                 training_num_classes=training_num_classes,
                 iteration=iteration,
                 class_mapping=val_class_mapping,)
+            
+            metric_logger.update_linear_probe_metrics(all_metrics_results_dict)
+
             torch.cuda.synchronize()
 
         iteration = iteration + 1
 
     # clean up memory
-    del metric_logger, train_data_loader, checkpointer, periodic_checkpointer, optimizer, scheduler, criterion
+    del train_data_loader, checkpointer, periodic_checkpointer, optimizer, scheduler, criterion
     torch.cuda.synchronize()
     torch.cuda.empty_cache()
     time.sleep(5)
 
-    val_results_list = evaluate_linear_classifiers(
+    val_results_list, all_metrics_results_dict = evaluate_linear_classifiers(
         feature_model=feature_model,
         linear_classifiers=remove_ddp_wrapper(linear_classifiers),
         data_loader=val_data_loader,
@@ -324,6 +334,7 @@ def eval_linear(
         iteration=iteration,
         class_mapping=val_class_mapping,
     )
+    update_linear_probe_metrics(output_dir, all_metrics_results_dict, prefix='val', iteration=iteration)
     return val_results_list, feature_model, linear_classifiers, iteration
 
 
@@ -342,6 +353,7 @@ def test_on_datasets(
     test_class_mappings=[None],
 ):
     results_list = []
+    all_metrics_out = {}
     for ds_id, (test_dataset, class_mapping, metrics) in \
             enumerate(zip(test_dataset_lists, test_class_mappings, test_metrics_list)):
 
@@ -351,7 +363,7 @@ def test_on_datasets(
             num_workers=num_workers,
             sampler_type=SamplerType.EPOCH,)
 
-        metrics_result_list = evaluate_linear_classifiers(
+        metrics_result_list, all_metrics_results_dict = evaluate_linear_classifiers(
             feature_model,
             remove_ddp_wrapper(linear_classifiers),
             test_data_loader,
@@ -367,7 +379,9 @@ def test_on_datasets(
         for result_dict in metrics_result_list:
             results_list.append(result_dict)
 
-    return results_list
+        all_metrics_out[ds_id] = all_metrics_results_dict
+
+    return results_list, all_metrics_out
 
 
 def run_eval_linear(
@@ -508,7 +522,7 @@ def run_eval_linear(
     )
     results_list = []
     if len(test_dataset_lists) > 0:
-        results_list = test_on_datasets(
+        results_list, test_all_metrics_out = test_on_datasets(
             feature_model,
             linear_classifiers,
             test_dataset_lists,
@@ -519,8 +533,11 @@ def run_eval_linear(
             training_num_classes,
             iteration,
             val_results_list[0]["best_classifier"],
-            test_class_mappings=test_class_mappings,
-        )
+            test_class_mappings=test_class_mappings,)
+        
+        for ds_id, cls_metric_dict in test_all_metrics_out.items():
+            update_linear_probe_metrics(output_dir, cls_metric_dict, prefix=f'test_{ds_id}')
+
     return results_list
 
 

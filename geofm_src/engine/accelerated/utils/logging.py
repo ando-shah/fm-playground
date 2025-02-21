@@ -18,6 +18,8 @@ import wandb
 import os
 import math
 import sys
+import pandas as pd
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger("eval")
 
@@ -61,12 +63,24 @@ def setup_logger(name, filename=None, level=logging.DEBUG, to_sysout=False, simp
     return logger
 
 
+def update_linear_probe_metrics(output_dir, cls_metric_dict, prefix='val', iteration=None):
+    val_file = os.path.join(output_dir, 'linear_probe_all_metrics.json')
+    with open(val_file, 'a+') as f:
+        for classifier_sting, metric in cls_metric_dict.items():
+            print_dict = dict(
+                iteration = iteration,
+                classifier = classifier_sting,
+                prefix = prefix)
+            print_dict.update({k: round(v.item(), 4) for k, v in metric.items()})
+            f.write(json.dumps(print_dict) + '\n')
+
 class MetricLogger(object):
     def __init__(self, delimiter="\t", output_dir=None, output_file=None, use_wandb=False):
         self.meters = defaultdict(SmoothedValue)
         self.expert_meters = {}  # Separate dict for expert metrics
         self.delimiter = delimiter
         self.output_file = os.path.join(output_dir, output_file) if output_dir else output_file
+        self.output_dir = output_dir
         self.use_wandb = use_wandb
         self.epoch_len = None
         self.nsamples_per_iter = None
@@ -138,12 +152,12 @@ class MetricLogger(object):
 
         if self.use_wandb:
             # improved ordering for wandb online GUI
-            pattern = {
+            prefix_map = {
                 'params': ['lr','wd','mom','teacher_temp', 'repa_alpha'],
                 'loss': ['total_loss','dino_local_crops_loss','dino_global_crops_loss','koleo_loss','ibot_loss','aux_loss','pe_distil_loss'],
                 'expert_activations': [k for k in self.expert_meters.keys()]
             }
-            for pat, v in pattern.items():
+            for pat, v in prefix_map.items():
                 to_log = {}
                 for k in v:
                     if k in dict_to_dump:
@@ -171,6 +185,20 @@ class MetricLogger(object):
         else:
             self.run.log(metric_dict)
     
+    def update_linear_probe_losses(self, loss_dict):
+        iteration = self.iteration
+        loss_file = os.path.join(self.output_dir, 'linear_probe_all_losses.csv')
+        loss_dict = {k[5:]: v for k, v in loss_dict.items()}
+        classifiers = sorted(list(loss_dict.keys()))
+        if not os.path.exists(loss_file):
+            with open(loss_file, 'w') as f:
+                f.write(','.join(['iteration'] + classifiers) + '\n')
+        with open(loss_file, 'a') as f:
+            f.write(','.join([str(iteration)] + [str(round(loss_dict[k].item(),4)) for k in classifiers]) + '\n')
+
+    def update_linear_probe_metrics(self, cls_metric_dict):
+        iteration = self.iteration
+        update_linear_probe_metrics(self.output_dir, cls_metric_dict, iteration=iteration)
 
     def log_every(self, 
                   iterable, 
@@ -198,8 +226,10 @@ class MetricLogger(object):
         self.nsamples_per_iter = nsamples_per_iter
         self.dataset_len = dataset_len
         n_epochs = math.ceil(n_iterations / epoch_len)
+        self.print_freq = print_freq
 
         i = start_iteration
+        self.iteration = i
         epoch = int(i // epoch_len)
 
         iter_space_fmt = ":" + str(len(str(n_iterations))) + "d"
@@ -224,6 +254,7 @@ class MetricLogger(object):
             yield obj
             iter_time.update(time.time() - end)
             if i % print_freq == 0 or i == n_iterations - 1:
+                self.iteration = i
                 self.dump_in_output_file(iteration=i, iter_time=iter_time.avg, data_time=data_time.avg)
                 eta_seconds = iter_time.global_avg * (n_iterations - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
@@ -329,3 +360,99 @@ class SmoothedValue:
             max=self.max,
             value=self.value,
         )
+
+
+def plot_curves(output_dir, suppress_print=False):
+    """ for linear_probe only"""
+    if not suppress_print:
+        print(f'Plotting curves for {output_dir}')
+
+    # extract train values
+
+    train_metrics = []
+    train_metrics_path = os.path.join(output_dir, 'training_metrics.json')
+
+    if os.path.exists(train_metrics_path): # extract fom json file
+        with open(train_metrics_path, 'r') as f:
+            for line in f.readlines():
+                train_metrics.append(json.loads(line))
+
+    else: # extract from log
+        log_file = os.path.join(output_dir, 'log') 
+        loss_pattern = 'loss:.*\('
+        iter_pattern = '\[iter:\s*\d*/'
+        with open(log_file, 'r') as f:
+            lines = f.readlines()
+            for l in lines:
+
+                if not 'Training' in l:
+                    continue
+
+                match = re.search(iter_pattern, l)
+                if match:
+                    iteration = int(match.group().split(':')[-1][:-1].strip())
+
+                    match = re.search(loss_pattern, l).group()
+                    loss = float(match.split('(')[0].split(':')[-1])
+                    
+                    train_metrics.append({'iteration': iteration, 'loss': loss})
+
+    # extract validation values
+
+    eval_metrics = []
+    test_metrics = []
+    eval_metrics_path = os.path.join(output_dir, 'results_eval_linear.json')
+    with open(eval_metrics_path, 'r') as f:
+        lines = f.readlines()
+        i = 0
+        while i < len(lines):
+            if lines[i].strip() == '':
+                i += 1
+                continue
+            if lines[i].startswith('iter:'):
+                iteration = int(lines[i].split(':')[-1].strip())
+                i += 1
+
+                while i < len(lines) and lines[i].strip() != '':
+                    metrics = json.loads(lines[i])
+                    metrics['iteration'] = iteration
+                    if 'TEST' in metrics.get('prefix', ''):
+                        test_metrics.append(metrics)
+                    else:
+                        eval_metrics.append(metrics)
+                    i += 1
+                continue
+    
+    dftrain = pd.DataFrame(train_metrics)
+    dfeval = pd.DataFrame(eval_metrics)
+
+    fig, ax = plt.subplots(2, 1, figsize=(7,5), sharex=True)
+    task_name = os.path.basename(output_dir)
+    ax[0].set_title(task_name)
+
+
+    # plot train
+    ax[0].plot(dftrain['iteration'], dftrain['loss'], label='train loss')
+    ax[0].set_ylabel('Train Loss')
+
+    # plot eval
+    handles = []
+    for metric_str in dfeval['metric_str'].unique():
+        dfplot = dfeval[dfeval['metric_str'] == metric_str]
+        hdl = ax[1].plot(dfplot['iteration'], dfplot['val'], label=f'{metric_str}')
+        handles.append(hdl)
+
+    # plot test
+    for metric_dict in test_metrics:
+        hdl = ax[1].plot(metric_dict['iteration'], 
+                   metric_dict['val'], 
+                   label = f'{metric_dict["metric_str"]} {metric_dict.get("prefix","")}',
+                   marker = '*' )
+        handles.append(hdl)
+        
+    # ax[1].set_title('Validation Metrics')
+    ax[1].set_xlabel('Iteration')
+    ax[1].set_ylabel('Validation Value')
+    ax[1].legend()
+
+    plt.savefig(os.path.join(output_dir, 'plots.png'))

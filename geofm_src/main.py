@@ -12,11 +12,12 @@ from factory import create_model
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import pandas as pd
-from geofm_src.engine.accelerated.utils.logging import setup_logger
+from geofm_src.engine.accelerated.utils.logging import setup_logger, plot_curves
 
 from geofm_src.engine.accelerated.linear import run_eval_linear
 from geofm_src.engine.lightning_task import LightningClsRegTask, LightningSegmentationTask
-
+import logging
+import json
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -105,6 +106,7 @@ def main(cfg: DictConfig):
     engine = 'lightning'
     if training_mode in ['linear_probe','knn']:
         assert training_mode != 'knn', 'not impolemented yet'
+        assert cfg.num_gpus == 1, 'accelerated only supports single gpu for now'
         engine = 'accelerated'
 
     # execute training with correct engine
@@ -193,6 +195,7 @@ def main(cfg: DictConfig):
         
         data_module.setup()
         setup_logger('eval', to_sysout=True, filename=os.path.join(cfg.output_dir, 'log.txt'))
+        logger = logging.getLogger("eval")
         model_wrapper.load_encoder(cfg.model.accel_cls_blk_indices)
 
         dl_cfg = OmegaConf.create(dict(
@@ -207,9 +210,16 @@ def main(cfg: DictConfig):
         ))
 
         if task == 'classification':
-            criterion_cfg = {'id': 'CrossEntropyLoss'}
-            val_metrics = [{'id': 'MulticlassAccuracy'}]
+            if cfg.dataset.multilabel:
+                logger.info('Multilabel classification')
+                criterion_cfg = {'id': 'MultiLabelSoftMarginLoss'}
+                val_metrics = [{'id': 'MultilabelAccuracy'}]
+            else:
+                logger.info('Multiclass classification')
+                criterion_cfg = {'id': 'CrossEntropyLoss'}
+                val_metrics = [{'id': 'MulticlassAccuracy'}]
         elif task == 'regression':
+            logger.info('Regression')
             criterion_cfg = {'id': 'MSELoss'}
             val_metrics = [{'id': 'RMSE'}]
         else:
@@ -236,6 +246,59 @@ def main(cfg: DictConfig):
         results.reset_index(drop=True, inplace=True)
         print(f'Results: \n\n{results.to_string()}\n')
 
+
+        # logging
+
+        # process loss file
+        loss_file = os.path.join(cfg.output_dir, 'linear_probe_all_losses.csv')
+        losses = pd.read_csv(loss_file).reset_index(drop=True)
+        classifiers = losses.columns[1:]
+
+        # process metrics file
+        metrics_file = os.path.join(cfg.output_dir, 'linear_probe_all_metrics.json')
+        metrics_by_cls = {}
+        with open(metrics_file, 'r') as f:
+            lines = f.readlines()
+        for l in lines:
+            d = json.loads(l)
+            cls = d['classifier']
+            if cls not in metrics_by_cls:
+                metrics_by_cls[cls] = {}
+            if 'test' in d['prefix']:
+                key = d['prefix']
+            else:
+                key = d['iteration']
+            metrics_by_cls[cls][key] = {k:v for k,v in d.items() if k not in ['prefix','iteration','classifier']}
+
+        if cfg.logger == 'mlflow':
+            logger.info('Logging to mlflow')
+            import mlflow
+            mlflow.set_tracking_uri(f"file:{os.path.join(os.environ['ODIR'], '_mlruns')}")
+            mlflow.set_experiment(experiment_name)
+            for cls in classifiers:
+                with mlflow.start_run(run_name=cls):
+                    # example: classifier_blocks_4_pooling_default_lr_2_50000
+                    params = dict(
+                        blocks = cls.split('_')[2],
+                        pooling = cls.split('_')[4],
+                        lr = float('.'.join(cls.split('_')[-2:])),)
+                    mlflow.log_params(params)
+
+                    for i in range(losses.shape[0]):
+                        mlflow.log_metric(f'loss', losses.at[i,cls], step=losses.at[i, 'iteration'])
+
+                    for i, metrics in metrics_by_cls[cls].items():
+                        if isinstance(i, int):
+                            for name, val in metrics.items():
+                                mlflow.log_metric(f'val/{name}', val, step=int(i))
+                        else:
+                            for name, val in metrics.items():
+                                mlflow.log_metric(f'{i}/{name}', val)
+                
+        else:
+            raise NotImplementedError()
+        
+        plot_curves(cfg.output_dir) # plot average curve into .png file
     else:
         raise ValueError(f'Unknown engine: {engine}')
 

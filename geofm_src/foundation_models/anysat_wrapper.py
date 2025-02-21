@@ -1,21 +1,12 @@
 import torch.nn as nn
 import torch
 from torch import Tensor
-from einops import rearrange
-from geofm_src.foundation_models.galileo.util import construct_galileo_input, MaskedOutput
-
+from einops import repeat
 from typing import Any
 
 
 from geofm_src.engine.model import EvalModelWrapper
 
-
-EXPECTED_CHANNELS = {
-    "s2": 10,
-    "s1": 3,
-    "s1-asc": 2,
-    "spot": 3,
-}
 
 
 class AnySatWrapper(EvalModelWrapper):
@@ -36,56 +27,43 @@ class AnySatWrapper(EvalModelWrapper):
 
 
     def format_input(self, x: Tensor, input_key: str) -> dict[str, Tensor]:
-        """Process the input tensor and stack per-sample outputs to form a single MaskedOutput.
-
+        """Format input tensor to be passed to the model.
+        
+        According to https://github.com/gastruc/AnySat?tab=readme-ov-file#format-your-data
         Args:
-            x (Tensor): Input tensor of shape [B, C, H, W] (for s1, s1-asc, or s2/spot).
-            input_key (str): Specifies how to interpret the channels.
-
+            x (Tensor): input tensor
         Returns:
-            dict[str, Tensor]: A dictionary mapping names as expected by the encoder.
+            dict[str, Tensor]: formatted input tensor
         """
-        # Validate expected channel count.
-        expected = EXPECTED_CHANNELS.get(input_key)
-        if expected is None:
-            raise ValueError(f"Unsupported input key: {input_key}")
-        assert x.shape[1] == expected, (
-            f"Input tensor for {input_key} should have {expected} channels"
-        )
+        match input_key:
+            case "s2":
+                assert x.shape[1] == 10, "Input tensor for s2 should have 10 channels"
+                # unsqueeze time dimension
+                x = x.unsqueeze(1)
+                dates = torch.arange(x.shape[1]).float()
 
-        # For keys that require a time dimension unsqueeze and rearrange.
-        if input_key in {"s1", "s1-asc", "s2"}:
-            x = x.unsqueeze(1)  # Now shape: [B, 1, C, H, W]
-            x = rearrange(x, "B T C H W -> B H W T C")
+            case "s1":
+                assert x.shape[1] == 3, "Input tensor for s1 should have 3 channels"
+                # unsqueeze time dimension
+                x = x.unsqueeze(1)
+                dates = torch.arange(x.shape[1]).float()
+            case "s1-asc":
+                assert x.shape[1] == 2, "Input tensor for s1-asc should have 2 channels"
+                # unsqueeze time dimension
+                x = x.unsqueeze(1)
+                dates = torch.arange(x.shape[1]).float()
 
-        # Process each element in the batch through the Galileo input function, but perhaps also need
-        # batched_collate_fn?
-        outputs = [construct_galileo_input(**{input_key: x[i]}) for i in range(x.shape[0])]
+            case "spot":
+                assert x.shape[1] == 3, "Input tensor for spot should have 3 channels"
+                dates = None
 
-        # Stack each field of the MaskedOutput over the batch dimension for batched input.
-        batched = MaskedOutput(
-            space_time_x=torch.stack([o.space_time_x for o in outputs], dim=0),
-            space_x=torch.stack([o.space_x for o in outputs], dim=0),
-            time_x=torch.stack([o.time_x for o in outputs], dim=0),
-            static_x=torch.stack([o.static_x for o in outputs], dim=0),
-            space_time_mask=torch.stack([o.space_time_mask for o in outputs], dim=0),
-            space_mask=torch.stack([o.space_mask for o in outputs], dim=0),
-            time_mask=torch.stack([o.time_mask for o in outputs], dim=0),
-            static_mask=torch.stack([o.static_mask for o in outputs], dim=0),
-            months=torch.stack([o.months for o in outputs], dim=0),
-        )
+        anysat_input = {input_key: x}
+        if dates is not None:
+            dates = repeat(dates, 't -> b t', b=x.shape[0])
+            anysat_input[f'{input_key}_dates'] = dates.to(x.device)
 
-        return {
-            "s_t_x": batched.space_time_x,
-            "sp_x": batched.space_x,
-            "t_x": batched.time_x,
-            "st_x": batched.static_x,
-            "s_t_m": batched.space_time_mask,
-            "sp_m": batched.space_mask,
-            "t_m": batched.time_mask,
-            "st_m": batched.static_mask,
-            "months": batched.months,
-        }
+
+        return anysat_input
 
     def get_blocks(self, x):
         self.cache = []
@@ -100,3 +78,4 @@ class AnySatWrapper(EvalModelWrapper):
         # TODO not sure how to configure the norm layer above
         # x = self.norm(x)
         return x
+

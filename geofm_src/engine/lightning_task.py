@@ -42,10 +42,15 @@ class LightningTask(LightningModule):
     def _proc_param_obj(self, obj):
         if isinstance(obj, nn.Module): 
             params = obj.parameters()
-        elif isinstance(obj, list) and len(obj[0]) == 1: # .parameters()
-            params = obj
-        elif isinstance(obj, list) and len(obj[0]) == 2: # .named_parameters()
-            params = [p for _, p in obj]
+        elif isinstance(obj, list):
+            if len(obj) == 0:
+                params = []
+            elif len(obj[0]) == 1: # .parameters()
+                params = obj
+            elif len(obj[0]) == 2: # .named_parameters()
+                params = [p for _, p in obj]
+            else:
+                raise ValueError(f"Invalid list of parameters: {obj}")
         else:
             raise ValueError(f"Invalid object: {obj}")
         return params
@@ -98,12 +103,12 @@ class LightningTask(LightningModule):
 class LightningClsRegTask(LightningTask):
 
     encoder: EvalModelWrapper
-    linear_classifier: torch.nn.Module
-    # dot_str_of_linear_classifier: str  # state_dict key to the linear classifier if assigned to the encoder, else empty
 
-    def __init__(self, args, model_config, data_config):
+    def __init__(self, args, model_config, data_config, model_wrapper: EvalModelWrapper):
         super().__init__(args, model_config, data_config)
         task = data_config.task
+        self.replace_pe = model_config.replace_pe
+        self.encoder = model_wrapper
 
         if task == 'classification':
             self.criterion = (
@@ -119,48 +124,68 @@ class LightningClsRegTask(LightningTask):
         else: 
             raise NotImplementedError()
               
+        self.linear_classifier = nn.Linear(
+            in_features=model_config.embed_dim, out_features=data_config.num_classes)
+
+        if self.replace_pe:
+            self.new_pe = self.encoder.replace_pe(data_config.num_channels)
+            print('Replaced PE!')
+
     def freeze_and_return_params(self):
         """ freeze / unfreeze weights & return parameters to optimize 
             according to self.training_mode"""
         mode = self.training_mode
 
+        # prepare encoder 
         if mode == 'linear_probe':
             self.freeze(self.encoder)
-            self.unfreeze(self.linear_classifier)
+            self.encoder.eval()
 
             params_to_optimize = self.linear_classifier.parameters()
 
-        elif mode == 'partial_finetune':
-            assert 'params_to_train' in self.model_config, "params_to_train not found in model_config"
+        elif mode == 'pe_linear_probe':
             self.freeze(self.encoder)
-            self.unfreeze(self.linear_classifier)
-            params_to_unfreeze = self._filter_named_params(
-                self._get_encoder_params_without_head(), self.model_config.params_to_train)
-            self.unfreeze(params_to_unfreeze)
 
-            params_to_optimize = list(self.linear_classifier.parameters()) + \
-                list([p for _, p in params_to_unfreeze])
+            params_to_optimize = list(self.new_pe.parameters())
+
+        elif mode == 'partial_finetune':
+            if not self.replace_pe:
+                assert 'params_to_train' in self.model_config, "params_to_train not found in model_config"
+            self.freeze(self.encoder)
+            encoder_params_to_unfreeze = self._filter_named_params(
+                self.encoder.named_parameters(), self.model_config.params_to_train)
+            self.unfreeze(encoder_params_to_unfreeze)
+
+            params_to_optimize = list([p for _, p in encoder_params_to_unfreeze])
 
         elif mode == 'lora':
             self.freeze(self.encoder)
-            self.unfreeze(self.linear_classifier)
             lora_params = self._filter_named_params(
-                self._get_encoder_params_without_head(), ['lora'])
+                self.encoder.named_parameters(), ['lora'])
             assert len(lora_params) > 0, "Did not find any LoRA parameters in the encoder"
             self.unfreeze(lora_params)
 
-            params_to_optimize = list(self.linear_classifier.parameters()) + \
-                list([p for _, p in lora_params])
+            params_to_optimize = list([p for _, p in lora_params])
 
         elif mode == 'full_finetune':
             self.unfreeze(self.encoder) 
-            self.unfreeze(self.linear_classifier)
 
-            params_to_optimize = list(self.linear_classifier.parameters()) + \
-                list(self._get_encoder_params_without_head(with_name=False))
+            params_to_optimize = list(self.encoder.parameters())
 
         else:
             raise ValueError(f"Invalid mode: {mode}")
+
+        # prepare norm
+        self.unfreeze(self.encoder.norm)
+        params_to_optimize += list(self.encoder.norm.parameters()) #TODO: norm added twice in full finetune?
+
+        # prepare linear classifier
+        self.unfreeze(self.linear_classifier)
+        params_to_optimize += list(self.linear_classifier.parameters())
+
+        if self.replace_pe:
+            self.unfreeze(self.new_pe)
+            params_to_optimize += list(self.new_pe.parameters())
 
         return params_to_optimize
     

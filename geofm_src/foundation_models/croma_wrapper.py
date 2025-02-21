@@ -63,3 +63,16 @@ class CromaWrapper(EvalModelWrapper):
     def default_blocks_to_featurevec(self, block_list):
         # the following is how the tokens are passed into the {mod}_GAP_FFN networks
         return self.norm(block_list[-1]).mean(dim=1)
+    
+    def replace_pe(self, num_channels):
+        mod = self.model_config.modality
+        if mod == 'optical':
+            enc = self.encoder.s2_encoder
+        elif mod == 'SAR':
+            enc = self.encoder.s1_encoder
+
+        pixels_per_patch = int(enc.patch_size * enc.patch_size * num_channels)
+        linear_input = torch.nn.Linear(pixels_per_patch, enc.dim)
+    
+        enc.linear_input = linear_input
+        return linear_input

@@ -6,10 +6,10 @@ from .dinov2_wrapper import DinoV2Wrapper
 from .softcon_wrapper import SoftConWrapper
 from .dofa_wrapper import DofaWrapper
 # from .satmae_wrapper import SatMAEWrapper
-# from .anysat_wrapper import AnySatWrapper  # type: ignore
 from .galileo_wrapper import GalileoWrapper
 from .senpamae_wrapper import SenPaMAEWrapper
 from .panopticon_wrapper import PanopticonWrapper
+from .anysat_wrapper import AnySatWrapper
 
 __all__ = (
     "PanopticonWrapper",
@@ -20,4 +20,5 @@ __all__ = (
     "GalileoWrapper",
     "SenPaMAEWrapper",
     "PanopticonWrapper",
+    "AnySatWrapper",
 )

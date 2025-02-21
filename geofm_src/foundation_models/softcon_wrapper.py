@@ -53,3 +53,16 @@ class SoftConWrapper(EvalModelWrapper):
 
     def default_blocks_to_featurevec(self, block_list):
         return self.norm(block_list[-1])[:,0]
+
+    def replace_pe(self, num_channels):
+
+        patch_size = self.model_config.patch_size
+        new_conv2d = nn.Conv2d(
+            num_channels, 
+            self.encoder.num_features, 
+            kernel_size=patch_size, 
+            stride=patch_size
+        )
+        self.encoder.patch_embed.proj = new_conv2d
+        return new_conv2d
+        

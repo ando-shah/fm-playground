@@ -21,6 +21,7 @@ model_registry = {
     "senpamae": models.SenPaMAEWrapper,
     "panopticon": models.PanopticonWrapper,
     "galileo": models.GalileoWrapper,
+    "anysat": models.AnySatWrapper,
 
     # "satmae": models.SatMAEWrapper,
     # "scalemae": models.ScaleMAEWrapper,

@@ -9,3 +9,4 @@ num_channels: 3 # dataset comes in sequences of 3, height, width by default
 data_path: ${oc.env:DATASETS_DIR}/DigitalTyphoon
 image_resolution: 224
 multilabel: false
+sequence_length: 3 # number of timesteps in the sequence

@@ -1,4 +1,6 @@
 task_id: regression
 
 bands:
-- id: goes/B01
+- id: goes/B13
+- id: goes/B13
+- id: goes/B13

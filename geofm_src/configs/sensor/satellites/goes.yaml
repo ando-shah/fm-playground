@@ -2,7 +2,7 @@ instrument: 'ABI'
 processing_level: 'NA'
 # rough values
 bands:
-  B01:
+  B13:
     name: 'Clean IR Longwave Band'
     gaussian:
       mu: 1040

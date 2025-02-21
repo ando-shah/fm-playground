@@ -53,7 +53,9 @@ class DofaWrapper(EvalModelWrapper):
 
     def get_blocks(self, x):
         self.cache = []
-        self.encoder(x, self.data_config.wavelengths_mean_microns)
+        #convert wavelengths to microns
+        wavelengths_mean_microns = [x/1e3 for x in self.data_config['wavelengths_mean_nm']]
+        self.encoder(x, wavelengths_mean_microns)
         blocks = self.cache
         self.cache = [] 
         return blocks

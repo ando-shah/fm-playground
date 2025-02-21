@@ -1,10 +1,12 @@
 """Digital Typhoon Regression dataset."""
 
-
+import logging
 import torch
 import kornia.augmentation as K
 from torchgeo.datamodules import DigitalTyphoonDataModule
 from .base_dataset import BaseDataset
+
+logger = logging.getLogger()
 
 class RegDataAugmentation(torch.nn.Module):
     def __init__(self, size, source_chn_ids, split, mean=None, std=None, band_ids=None, target_chn_ids=None):
@@ -20,8 +22,8 @@ class RegDataAugmentation(torch.nn.Module):
             self.transform = torch.nn.Sequential(
                 K.Normalize(mean=mean, std=std),
                 K.Resize(size=size, align_corners=True),
-                # K.RandomHorizontalFlip(p=0.5),
-                # K.RandomVerticalFlip(p=0.5),
+                K.RandomHorizontalFlip(p=0.5),
+                K.RandomVerticalFlip(p=0.5),
             )
         else:
             self.transform = torch.nn.Sequential(
@@ -50,7 +52,8 @@ class DigitalTyphoonDataset(BaseDataset):
             config: Config object for the dataset, this is the dataset config
         """
         super().__init__(config)
-
+        self.sequence_length = config.get('sequence_length', 3)
+        logger.info(f"[DigitalTyphoon] Temporal sequence length: {self.sequence_length}")
 
     def create_dataset(self):
         """Create dataset splits for training, validation, and testing."""
@@ -61,14 +64,13 @@ class DigitalTyphoonDataset(BaseDataset):
         output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
         if output_chn_ids is not None:
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
-            self.config['wavelengths_mean_microns'] = [x/1e3 for x in self.config['wavelengths_mean_nm']]
             self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 
         # dataset has argument sequence length which actually dictates the number of channels
         # commonly in literature is used 3 channels and pretend it is RGB
         # sequence_length: length of the sequence to return
         dm = DigitalTyphoonDataModule(
-            root=self.root_dir,
+            root=self.root_dir, sequence_length=self.sequence_length
         )
         # use the splits implemented in torchgeo
         dm.setup('fit')

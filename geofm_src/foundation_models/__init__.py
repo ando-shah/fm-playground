@@ -7,5 +7,17 @@ from .softcon_wrapper import SoftConWrapper
 from .dofa_wrapper import DofaWrapper
 # from .satmae_wrapper import SatMAEWrapper
 # from .anysat_wrapper import AnySatWrapper  # type: ignore
+from .galileo_wrapper import GalileoWrapper
 from .senpamae_wrapper import SenPaMAEWrapper
 from .panopticon_wrapper import PanopticonWrapper
+
+__all__ = (
+    "PanopticonWrapper",
+    "CromaWrapper",
+    "DinoV2Wrapper",
+    "SoftConWrapper",
+    "DofaWrapper",
+    "GalileoWrapper",
+    "SenPaMAEWrapper",
+    "PanopticonWrapper",
+)

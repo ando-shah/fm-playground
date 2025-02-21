@@ -20,6 +20,7 @@ model_registry = {
     # "anysat": models.AnySatWrapper,
     "senpamae": models.SenPaMAEWrapper,
     "panopticon": models.PanopticonWrapper,
+    "galileo": models.GalileoWrapper,
 
     # "satmae": models.SatMAEWrapper,
     # "scalemae": models.ScaleMAEWrapper,

@@ -6,6 +6,10 @@ from geofm_src.foundation_models.galileo.util import construct_galileo_input, Ma
 from .galileo.model import Encoder
 
 from typing import Any
+from pathlib import Path
+import os
+from torchvision.datasets.utils import download_url
+
 
 
 from geofm_src.engine.model import EvalModelWrapper
@@ -22,7 +26,7 @@ EXPECTED_CHANNELS = {
 class GalileoWrapper(EvalModelWrapper):
     def load_encoder(self, blk_indices):
         URL = "https://hf.co/nasaharvest/galileo/resolve/main/models/base/{}"
-        pretrained_path = model_config.get("pretrained_path", None)
+        pretrained_path = self.model_config.get("pretrained_path", None)
         print(f"PRETRAINED PATH: {pretrained_path}")
 
         if pretrained_path and not os.path.exists(pretrained_path):
@@ -40,18 +44,15 @@ class GalileoWrapper(EvalModelWrapper):
         path = pretrained_path if pretrained_path else None
 
         self.encoder = Encoder.load_from_folder(Path(os.path.dirname(path)), device="cpu")
-
-        print(self.encoder)
         
-
-        # Dont think there is a norm layer to be used here
-        self.norm = nn.Identity()
+        self.norm = self.encoder.norm
     
         
         # prepare hooks
         for idx in blk_indices:
-            self.encoder.model.blocks[idx].register_forward_hook(
+            self.encoder.blocks[idx].register_forward_hook(
                 lambda m, i, o: self._cache_block(o))
+
 
     def _cache_block(self,x):
         self.cache.append(x)
@@ -112,13 +113,12 @@ class GalileoWrapper(EvalModelWrapper):
     def get_blocks(self, x):
         self.cache = []
         # TODO these arguments will be different for segmentation 
-        self.encoder(patch_size=self.patch_size, **self.format_input(x, self.model_config.input_key))
+        self.encoder(patch_size=self.model_config.patch_size, **self.format_input(x, self.model_config.input_key))
         blocks = self.cache
         self.cache = [] 
         return blocks
 
     def default_blocks_to_featurevec(self, block_list):
         x = block_list[-1][:, 1:,:].mean(dim=1)
-        # TODO not sure how to configure the norm layer above
         x = self.norm(x)
         return x

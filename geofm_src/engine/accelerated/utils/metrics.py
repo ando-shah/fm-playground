@@ -13,6 +13,8 @@ from torch import Tensor
 from torchmetrics import MetricCollection
 from torchmetrics import Accuracy
 from torchmetrics.classification import MulticlassAccuracy, MultilabelAveragePrecision, MultilabelF1Score
+from torchmetrics.regression import MeanSquaredError
+
 from . import distributed
 import torch.nn as nn
 
@@ -57,6 +59,18 @@ def build_metric(metric_cfg: List, num_classes):
             val = MultilabelF1Score(
                 num_labels=num_classes, sync_on_compute=sync_on_compute, **defaults)
 
+        elif id == 'MSE':
+            defaults = dict(num_outputs=1) # Average over all outputs
+            defaults.update(cfg)
+            key = f'MSE'
+            val = MeanSquaredError(**defaults)
+        
+        elif id == 'RMSE':
+            defaults = dict(num_outputs=1, squared=False) # Average over all outputs
+            defaults.update(cfg)
+            key = f'RMSE'
+            val = MeanSquaredError(**defaults)
+
         else:
             raise ValueError(f"Unknown metric {id}")
         
@@ -71,5 +85,7 @@ def build_criterion(cfg):
         return nn.CrossEntropyLoss(**cfg)
     elif id == 'MultiLabelSoftMarginLoss':
         return nn.MultiLabelSoftMarginLoss(**cfg)
+    elif id == 'MSELoss':
+        return nn.MSELoss(**cfg)
     else:
         raise ValueError(f"Unknown criterion {id}")

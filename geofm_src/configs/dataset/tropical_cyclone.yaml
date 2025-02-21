@@ -3,10 +3,9 @@ defaults:
 
 dataset_type: tropical_cyclone
 task: regression
-dataset_name: tropical_cyclone
+dataset_name: tropical_cyclone # for band_ids
 num_classes: 1
-num_channels: 3
+num_channels: 1
 data_path: ${oc.env:DATASETS_DIR}/TropicalCyclone
 image_resolution: 224
-band_wavelengths: [11, 11, 11] # 
 multilabel: false

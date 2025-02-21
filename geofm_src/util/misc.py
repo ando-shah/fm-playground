@@ -69,9 +69,10 @@ def cls_metric(dataset_config, output, target):
     return acc1, acc5
 
 def reg_metric(dataset_config, output, target):
+    rmse = mean_squared_error(output, target, squared=False)
     mse = mean_squared_error(output, target)
     mae = mean_absolute_error(output, target)
-    return mse, mae
+    return rmse, mse, mae
     
 
 

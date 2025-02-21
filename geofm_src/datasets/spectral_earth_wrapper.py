@@ -376,8 +376,7 @@ class CorineDataset(BaseDataset):
         if output_chn_ids is not None:
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
             self.config['wavelengths_mean_microns'] = [x/1e3 for x in self.config['wavelengths_mean_nm']]
-            if self.full_spectra:
-                self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
+            self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 
         dataset_train = SpectralEarthDataset(
             root=self.root_dir, split="train", task_dir='corine', transforms=train_transform,

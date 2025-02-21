@@ -1,0 +1,4 @@
+task_id: regression
+
+bands:
+- id: goes/B01

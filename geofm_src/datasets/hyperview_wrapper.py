@@ -16,17 +16,8 @@ from torchgeo.transforms import AugmentationSequential
 from typing import Optional, Callable
 from .utils.utils import ChannelSampler, ChannelSimulator, extract_wavemus, load_ds_cfg, MaskTensor
 from torchvision import transforms
+from .base_dataset import BaseDataset
 
-# def resize_hyperspectral_tensor(img_tensor, output_shape=(150, 128, 128)):
-#     img_tensor = img_tensor.unsqueeze(0)
-
-#     resized_tensor = F.interpolate(
-#         img_tensor, size=output_shape[1:], mode="bicubic", align_corners=True
-#     )
-
-#     resized_tensor = resized_tensor.squeeze(0)
-
-#     return resized_tensor
 
 
 
@@ -88,8 +79,8 @@ class HyperviewBenchmark(NonGeoDataset):
     
 
     # Label stats
-    TARGET_MEAN = torch.tensor([ 62.3122, 201.5815, 141.3911,   5.9815])
-    TARGET_STD = torch.tensor([36.6041, 94.0852, 64.3309,  2.2037])
+    TARGET_MEAN = torch.tensor([62.3122, 201.5815, 141.3911, 5.9815], dtype=torch.float32)
+    TARGET_STD =  torch.tensor([36.6041, 94.0852, 64.3309, 2.2037], dtype=torch.float32)
     # Max per label: tensor([325.0000, 625.0000, 400.0000,   7.8000], dtype=torch.float64)
     # Min per label: tensor([ 20.3000, 109.0000,  26.8000,   5.6000], dtype=torch.float64)
 
@@ -202,7 +193,7 @@ class HyperviewBenchmark(NonGeoDataset):
             [type]: 2D numpy array with soil properties levels
         """
         row = self.df.iloc[index]
-        targets = torch.tensor(row[self.keys].values.tolist())
+        targets = torch.tensor(row[self.keys].values.tolist(), dtype=torch.float32)
         targets = (targets - self.TARGET_MEAN) / self.TARGET_STD
         return targets
 
@@ -262,7 +253,7 @@ class HyperviewBenchmark(NonGeoDataset):
 
 
     
-class ClsDataAugmentation(torch.nn.Module):
+class RegDataAugmentation(torch.nn.Module):
     def __init__(self, size, source_chn_ids, split="val", 
                  mean=None, std=None, band_ids=None, 
                  target_chn_ids=None, mask_image=True):
@@ -271,7 +262,11 @@ class ClsDataAugmentation(torch.nn.Module):
         flipH = K.RandomHorizontalFlip(p=0.5, keepdim=True)
         flipV = K.RandomVerticalFlip(p=0.5, keepdim=True)
         crop = K.RandomResizedCrop(_to_tuple(size), scale=(0.8, 1.0), keepdim=True) #, resample='bicubic')
-        mask_tensor = MaskTensor(mask=mask_image)
+        
+        if mask_image:
+            mask_tensor = MaskTensor(mask=mask_image)
+        else:
+            mask_tensor = None
         self.output_chn_ids = None
         
         # setup HS specific augmentations
@@ -284,11 +279,13 @@ class ClsDataAugmentation(torch.nn.Module):
         elif target_chn_ids is not None:
             chn_sim = ChannelSimulator(source_chn_ids=source_chn_ids, target_chn_ids=target_chn_ids)
             self.output_chn_ids = target_chn_ids
-
         else:
             self.output_chn_ids = source_chn_ids
 
         self.transforms = []
+        if mask_tensor is not None:
+            self.transforms.append(mask_tensor)
+
         if split == "train":
             if band_ids is not None:
                 print(f'[ClsDataAugmentation: train] Sampling channels: {band_ids}')
@@ -298,7 +295,7 @@ class ClsDataAugmentation(torch.nn.Module):
                 self.transforms.append(chn_sim)
             else:
                 pass
-            self.transforms.extend([mask_tensor, crop, flipH, flipV])
+            self.transforms.extend([crop, flipH, flipV])
         else:
             if band_ids is not None:
                 print(f'[ClsDataAugmentation: val/test] Sampling channels: {band_ids}')
@@ -309,7 +306,7 @@ class ClsDataAugmentation(torch.nn.Module):
             else:
                 pass
 
-            self.transforms.extend([mask_tensor, crop])
+            self.transforms.append(crop)
 
         self.transform = torch.nn.Sequential(*self.transforms)
 
@@ -321,36 +318,23 @@ class ClsDataAugmentation(torch.nn.Module):
         return self.transform(x)
 
 
-class HyperviewDataset:
+class HyperviewDataset(BaseDataset):
     def __init__(self, config):
-        self.config = config
-        self.img_size = (config.image_resolution, config.image_resolution)
-        self.root_dir = config.data_path
-        self.band_ids = config.get("band_ids", None)
-        self.ds_name = config.dataset_name
-        self.target_ds_name = config.get('target_dataset_name', None)
-        self.full_spectra = config.get("full_spectra", False) # only for panopticon
-        self.source_chn_ids = torch.tensor(extract_wavemus(load_ds_cfg(self.ds_name), True), dtype=torch.long) #load all bands
-        if self.target_ds_name is not None:
-            self.target_chn_ids = torch.tensor(extract_wavemus(load_ds_cfg(self.target_ds_name), True), dtype=torch.long) #load all bands
-        else:
-            self.target_chn_ids = None
+        super().__init__(config)
         self.mask_image = config.get("mask_image", True)
 
-        #both band_ids and target_ds_name are mutually exclusive
-        # assert (self.band_ids is not None and self.target_ds_name is None) or (self.band_ids is None and self.target_ds_name is not None), "Both band_ids and target_ds_name cannot be provided"
-
+       
     def create_dataset(self):
-        train_transform = ClsDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids, mask_image=self.mask_image)
-        eval_transform  = ClsDataAugmentation(split="test", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids, mask_image=self.mask_image)
+        train_transform = RegDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids, mask_image=self.mask_image)
+        eval_transform  = RegDataAugmentation(split="test", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids, mask_image=self.mask_image)
 
 
         # Override the config with the transformed channel ids
         output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
         if output_chn_ids is not None:
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
-            if self.full_spectra:
-                self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
+            self.config['wavelengths_mean_microns'] = [x/1e3 for x in self.config['wavelengths_mean_nm']]
+            self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 
         dataset_train = HyperviewBenchmark(
             root=self.root_dir, split="train", transforms=train_transform,

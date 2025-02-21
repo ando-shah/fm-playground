@@ -206,7 +206,8 @@ class LightningClsRegTask(LightningTask):
 
     def _log_metrics_reg(self, outputs, targets, prefix="train"):
         # Calculate accuracy and other classification-specific metrics
-        mse, mae = reg_metric(self.data_config, outputs[0], targets)
+        rmse, mse, mae = reg_metric(self.data_config, outputs[0], targets)
+        self.log(f"{prefix}_rmse", rmse, on_step=True, on_epoch=True, prog_bar=True)
         self.log(f"{prefix}_mse", mse, on_step=True, on_epoch=True, prog_bar=True)
         self.log(f"{prefix}_mae", mae, on_step=True, on_epoch=True, prog_bar=True)
 

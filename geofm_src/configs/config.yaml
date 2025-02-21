@@ -4,8 +4,6 @@ defaults:
 - _self_
 
 
-base_lr: -1
-lr: -1
 weight_decay: 0.0001
 epochs: 30
 warmup_epochs: 0
@@ -23,3 +21,4 @@ logger: mlflow
 overwrite: true
 
 trainer_kwargs: null # additional kwargs for the lightning trainer
+add_defining_args: true

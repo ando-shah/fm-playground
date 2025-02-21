@@ -16,7 +16,7 @@ import torch.nn as nn
 from fvcore.common.checkpoint import Checkpointer, PeriodicCheckpointer
 
 
-from .utils.logging import MetricLogger, update_linear_probe_metrics
+from .utils.logger import MetricLogger, update_linear_probe_metrics
 from .utils.utils import evaluate, blocks_to_cls, remove_ddp_wrapper
 from .utils.data import make_data_loader, SamplerType
 from .utils.metrics import build_metric, build_criterion
@@ -433,7 +433,7 @@ def run_eval_linear(
     # set eval_period_iter
     assert (eval_period_epoch == -1) != (eval_period_iter == -1), \
         "Exactly one of eval_period_epoch and eval_period_iter must be set"
-    if eval_period_epoch == -1:
+    if eval_period_iter == -1:
         eval_period_iter = max(1.0, eval_period_epoch * iter_per_epoch)
     logger.info(f"max_iter: {max_iter}, iter_per_epoch: {iter_per_epoch}, eval_period_iter: {eval_period_iter}")
     checkpoint_period = math.ceil(save_checkpoint_frequency_epoch * iter_per_epoch)

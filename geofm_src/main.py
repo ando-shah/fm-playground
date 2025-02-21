@@ -12,7 +12,7 @@ from factory import create_model
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import pandas as pd
-from geofm_src.engine.accelerated.utils.logging import setup_logger, plot_curves
+from geofm_src.engine.accelerated.utils.logger import setup_logger, plot_curves
 
 from geofm_src.engine.accelerated.linear import run_eval_linear
 from geofm_src.engine.lightning_task import LightningClsRegTask, LightningSegmentationTask
@@ -41,33 +41,69 @@ def main(cfg: DictConfig):
     is_fastdevrun = cfg.trainer.get('fast_dev_run', False)
     task = cfg.dataset.task
     training_mode = cfg.model.training_mode
+    os.environ['CDIR'] = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/')
 
-    # setup output dir
-    if cfg.output_dir is None:
-        experiment_name = f"{cfg.model.model_type}/{cfg.model.training_mode}/{cfg.dataset.dataset_name}"
+    # assign engine
+    if training_mode in ['linear_probe','knn']:
+        engine = 'accelerated'
+    else:
+        engine = 'lightning'
+
+    # engine specific input handling
+    default_config_dir = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/task_defaults/')
+    if engine == 'accelerated':
+        defaults = OmegaConf.load(os.path.join(default_config_dir, 'linear_probe_accel.yaml'))
+        print(OmegaConf.to_yaml(defaults))
+        cfg = OmegaConf.merge(defaults, cfg)
+        print(OmegaConf.to_yaml(cfg))
+
+
+        assert OmegaConf.is_list(cfg.lr), 'lr should be a list for accelerated engine'
+        assert training_mode != 'knn', 'not impolemented yet'
+        assert cfg.num_gpus == 1, 'accelerated only supports single gpu for now'
+
+        args_defining_run = {
+            "batch_size": "bsz",
+            "epochs": "e",
+        }
+
+    elif engine == 'lightning':
+        defaults = OmegaConf.load(os.path.join(default_config_dir, 'lightning.yaml'))
+        cfg = OmegaConf.merge(defaults, cfg)
+
+        assert all([k not in cfg for k in ['pooling','n_last_blocks_list']]), 'only for accelerated engine'
+
         args_defining_run = {
             "lr": "lr",
             "batch_size": "bsz",
             "epochs": "e",
         }
+
+        # Scale learning rate
+        assert (cfg.lr == -1) != (cfg.base_lr == -1), "either lr or base_lr should be set"
+        if cfg.lr == -1:
+            cfg.lr = cfg.base_lr * cfg.num_gpus
+
+    # setup output dir
+    experiment_name = os.path.relpath(cfg.output_dir, os.environ['ODIR'])
+    if cfg.add_defining_args:
+            
         assert all([not "." in k for k in args_defining_run.keys()]), (
             "cannot contain nested '.' yet"
         )
         run_name = "_".join([f"{v}={cfg[k]}" for k, v in args_defining_run.items()])
 
-        suff = cfg.output_dir_suffix if cfg.output_dir_suffix is not None else ""
         cfg.output_dir = os.path.join(
-            os.environ["ODIR"], experiment_name, suff, run_name
+            cfg.output_dir, run_name
         )
 
     else:
-        assert cfg.output_dir_suffix is None, (
-            "output_dir_suffix is only used when output_dir is not set"
-        )
-        experiment_name = os.path.basename(os.path.normpath(cfg.output_dir))
         run_name = (
             f"{experiment_name}_run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
+
+    print(experiment_name)
+    print(cfg.output_dir)
 
     # check if task already executed
     if os.path.exists(os.path.join(cfg.output_dir, "results.csv")):
@@ -79,10 +115,7 @@ def main(cfg: DictConfig):
 
     seed_everything(cfg.seed)
 
-    # Scale learning rate
-    assert (cfg.lr == -1) != (cfg.base_lr == -1), "either lr or base_lr should be set"
-    if cfg.lr == -1:
-        cfg.lr = cfg.base_lr * cfg.num_gpus
+
 
     # print & save config
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
@@ -102,12 +135,6 @@ def main(cfg: DictConfig):
         seed=cfg.seed,
     )
 
-    # assign engine
-    engine = 'lightning'
-    if training_mode in ['linear_probe','knn']:
-        assert training_mode != 'knn', 'not impolemented yet'
-        assert cfg.num_gpus == 1, 'accelerated only supports single gpu for now'
-        engine = 'accelerated'
 
     # execute training with correct engine
     if engine == 'lightning':
@@ -204,9 +231,9 @@ def main(cfg: DictConfig):
         ))
 
         heads_cfg = OmegaConf.create(dict(
-            n_last_blocks_list = [1,4],
-            pooling = ['avgpool', 'cls', 'default'],
-            learning_rates = [1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1, 0.2, 0.3, 0.5, 1,3,5,10],
+            n_last_blocks_list = cfg.n_last_blocks_list,
+            pooling = cfg.pooling,
+            learning_rates = cfg.lr,
         ))
 
         if task == 'classification':
@@ -235,7 +262,7 @@ def main(cfg: DictConfig):
             dl_cfg,
             heads_cfg,
             cfg.epochs,
-            eval_period_epoch = 1,
+            eval_period_epoch = 10,
             criterion_cfg = criterion_cfg,
             val_metrics = val_metrics,
         )
@@ -274,14 +301,14 @@ def main(cfg: DictConfig):
             logger.info('Logging to mlflow')
             import mlflow
             mlflow.set_tracking_uri(f"file:{os.path.join(os.environ['ODIR'], '_mlruns')}")
-            mlflow.set_experiment(experiment_name)
+            mlflow.set_experiment(os.path.join(experiment_name, run_name))
             for cls in classifiers:
                 with mlflow.start_run(run_name=cls):
                     # example: classifier_blocks_4_pooling_default_lr_2_50000
                     params = dict(
                         blocks = cls.split('_')[2],
                         pooling = cls.split('_')[4],
-                        lr = float('.'.join(cls.split('_')[-2:])),)
+                        lr = float('.'.join(cls.split('_')[-2:])) ,)
                     mlflow.log_params(params)
 
                     for i in range(losses.shape[0]):

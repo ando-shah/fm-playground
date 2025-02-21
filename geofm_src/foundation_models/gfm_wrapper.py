@@ -1,4 +1,4 @@
-from geofm_src.engine.lightning import LightningClsRegTask, LightningSegmentationTask
+from geofm_src.engine.lightning_task import LightningClsRegTask, LightningSegmentationTask
 from .GFM import build_swin_cls, build_swin_seg
 import torch.nn as nn
 

@@ -1,4 +1,4 @@
-from geofm_src.engine.lightning import LightningClsRegTask, LightningSegmentationTask
+from geofm_src.engine.lightning_task import LightningClsRegTask, LightningSegmentationTask
 from .CROMA.use_croma import PretrainedCROMA
 import torch
 import os

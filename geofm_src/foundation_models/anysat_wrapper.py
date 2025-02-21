@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 
-from geofm_src.engine.lightning import LightningClsRegTask, LightningSegmentationTask
+from geofm_src.engine.lightning_task import LightningClsRegTask, LightningSegmentationTask
 
 
 

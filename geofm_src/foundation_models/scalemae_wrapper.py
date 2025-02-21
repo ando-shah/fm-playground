@@ -6,7 +6,7 @@ import torch
 import os
 
 # use mmsegmentation for upernet+mae
-from geofm_src.engine.lightning import LightningClsRegTask, LightningSegmentationTask
+from geofm_src.engine.lightning_task import LightningClsRegTask, LightningSegmentationTask
 from torchvision.datasets.utils import download_url
 
 from geofm_src.engine.base import LinearHead

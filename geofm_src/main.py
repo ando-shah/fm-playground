@@ -15,7 +15,7 @@ import pandas as pd
 from geofm_src.engine.accelerated.utils.logging import setup_logger
 
 from geofm_src.engine.accelerated.linear import run_eval_linear
-from geofm_src.engine.lightning import LightningClsRegTask, LightningSegmentationTask
+from geofm_src.engine.lightning_task import LightningClsRegTask, LightningSegmentationTask
 
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)

@@ -15,7 +15,8 @@ import torch
 from torchgeo.datasets.geo import NonGeoDataset
 from torchgeo.samplers.utils import _to_tuple
 from .utils.utils import ChannelSampler, ChannelSimulator, extract_wavemus, load_ds_cfg
-# logger = logging.getLogger("dinov2")
+from .base_dataset import BaseDataset
+logger = logging.getLogger()
 
 
 
@@ -359,23 +360,11 @@ class ClsDataAugmentation(torch.nn.Module):
         return self.transform(x)
 
 
-class CorineDataset:
+class CorineDataset(BaseDataset):
     def __init__(self, config):
-        self.config = config
-        self.img_size = (config.image_resolution, config.image_resolution)
-        self.root_dir = config.data_path
-        self.band_ids = config.get("band_ids", None)
-        self.ds_name = config.dataset_name
-        self.target_ds_name = config.get('target_dataset_name', None)
-        self.full_spectra = config.get("full_spectra", False) # only for panopticon
-        self.source_chn_ids = torch.tensor(extract_wavemus(load_ds_cfg(self.ds_name), True), dtype=torch.long) #load all bands
-        if self.target_ds_name is not None:
-            self.target_chn_ids = torch.tensor(extract_wavemus(load_ds_cfg(self.target_ds_name), True), dtype=torch.long) #load all bands
-        else:
-            self.target_chn_ids = None
-
-        #both band_ids and target_ds_name are mutually exclusive
-        assert (self.band_ids is not None and self.target_ds_name is None) or (self.band_ids is None and self.target_ds_name is not None), "Both band_ids and target_ds_name cannot be provided"
+        super().__init__(config)
+        
+        # assert (self.band_ids is not None and self.target_ds_name is None) or (self.band_ids is None and self.target_ds_name is not None), "Both band_ids and target_ds_name cannot be provided"
 
     def create_dataset(self):
         train_transform = ClsDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
@@ -386,6 +375,7 @@ class CorineDataset:
         output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
         if output_chn_ids is not None:
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
+            self.config['wavelengths_mean_microns'] = [x/1e3 for x in self.config['wavelengths_mean_nm']]
             if self.full_spectra:
                 self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 

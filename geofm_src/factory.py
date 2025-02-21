@@ -10,6 +10,7 @@ from geofm_src.datasets.tropical_cyclone_wrapper import TropicalCycloneDataset
 from geofm_src.datasets.hyperview_wrapper import HyperviewDataset
 from geofm_src.datasets.dummy_dataset import DummyWrapper
 from geofm_src.engine.model import EvalModelWrapper
+from geofm_src.datasets.fmow_wrapper import FmowDataset
 
 model_registry = {
     "croma": models.CromaWrapper,
@@ -34,6 +35,7 @@ dataset_registry = {
     "digital_typhoon": DigitalTyphoonDataset,
     "tropical_cyclone": TropicalCycloneDataset,
     "hyperview": HyperviewDataset,
+    "fmow": FmowDataset,
     "dummy": DummyWrapper,
     # Add other dataset mappings here
 }

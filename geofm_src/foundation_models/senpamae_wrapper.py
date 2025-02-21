@@ -10,7 +10,7 @@ from geofm_src.engine.model import EvalModelWrapper
 
 
 class SenPaMAEWrapper(EvalModelWrapper):
-    URL = "https://drive.google.com/file/d/16IoG47yzdyUnPqUgaV8ofeja5RgQjlAz"
+    URL = "https://drive.google.com/file/d/1B2g1nm2oxKVgocW22nvEFkFellKZ6ATX"
     # url = 'https://drive.usercontent.google.com/download?id=16IoG47yzdyUnPqUgaV8ofeja5RgQjlAz&export=download&authuser=0&confirm=t&uuid=9e279667-af3a-4f3a-a648-bec3452a1450&at=AIrpjvMEDRsz82ufHQy8sUmSk5j5%3A1739180929862'
 
     def load_encoder(self, blk_indices):

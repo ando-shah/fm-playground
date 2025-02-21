@@ -15,6 +15,9 @@ class EvalModelWrapper(nn.Module):
         Also needs to save the encoder and the norm function for  
         normalizing features in self.encoder and self.norm respectively.
 
+        Important: Make sure that self.norm is not a submodule of self.encoder!
+        Else, the optimizer might optimize that param twice.
+
         Input:
             blk_indices: list of indices of intermediate features to return
         """
@@ -60,5 +63,20 @@ class EvalModelWrapper(nn.Module):
 
         Output:
             feature vector of size [b,d]
+        """
+        raise NotImplementedError()
+
+    def replace_pe(self, num_channels):
+        """
+        Replaces the positional encoding of the model with a new positional encoding
+        that can handle `num_channels` input channels. The new PE should
+        be initialized from scratch. This is useful to adjust models to 
+        different number of input channels
+
+        Input:
+            num_channels: number of input channels
+
+        Returns:
+            module or list of parameters to optimize.
         """
         raise NotImplementedError()

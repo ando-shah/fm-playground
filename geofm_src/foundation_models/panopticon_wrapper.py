@@ -30,3 +30,5 @@ class PanopticonWrapper(EvalModelWrapper):
     def default_blocks_to_featurevec(self, block_list):
         return self.norm(block_list[-1])[:,0]
 
+    def replace_pe(self, num_channels):
+        raise NotImplementedError('No need :)')

@@ -53,10 +53,7 @@ def main(cfg: DictConfig):
     default_config_dir = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/task_defaults/')
     if engine == 'accelerated':
         defaults = OmegaConf.load(os.path.join(default_config_dir, 'linear_probe_accel.yaml'))
-        print(OmegaConf.to_yaml(defaults))
         cfg = OmegaConf.merge(defaults, cfg)
-        print(OmegaConf.to_yaml(cfg))
-
 
         assert OmegaConf.is_list(cfg.lr), 'lr should be a list for accelerated engine'
         assert training_mode != 'knn', 'not impolemented yet'
@@ -101,9 +98,6 @@ def main(cfg: DictConfig):
         run_name = (
             f"{experiment_name}_run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
-
-    print(experiment_name)
-    print(cfg.output_dir)
 
     # check if task already executed
     if os.path.exists(os.path.join(cfg.output_dir, "results.csv")):

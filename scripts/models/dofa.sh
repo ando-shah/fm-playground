@@ -5,16 +5,18 @@ cmd='python geofm_src/main.py'
 
 ######## classification
 all_tasks=(
+    'base/dofa linear_probe geobench_eurosat_13b'
+    'base/dofa linear_probe geobench_brick_kiln_13b'
+    'base/dofa linear_probe geobench_eurosat_10b'
+    'base/dofa linear_probe so2sat_10b'
     'base/dofa linear_probe tropical_cyclone'
     'base/dofa linear_probe corine_21'
     'base/dofa linear_probe corine_sd'
     'base/dofa linear_probe fmow_8b'
     'base/dofa linear_probe fmow_4b'
-    'base/dofa linear_probe geobench_eurosat_13b'
     'base/dofa linear_probe hyperview_21b'
     'base/dofa linear_probe digital_typhoon_3b'
     'base/dofa linear_probe digital_typhoon_1b'
-    'base/dofa linear_probe geobench_eurosat_10b'
     )
 
 suffix='debug'

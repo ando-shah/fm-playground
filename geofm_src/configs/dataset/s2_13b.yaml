@@ -9,35 +9,12 @@ band_names:
   - "08 - NIR"
   - "08A - Vegetation Red Edge"
   - "09 - Water vapour"
+  - "10 - SWIR - Cirrus"
   - "11 - SWIR"
   - "12 - SWIR"
-num_channels: 12
-band_wavelengths:
-  - 440
-  - 490
-  - 560
-  - 665
-  - 705
-  - 740
-  - 783
-  - 842
-  - 860
-  - 940
-  - 1610
-  - 2190
-band_gsds:
-  - 60
-  - 10
-  - 10
-  - 10 
-  - 20
-  - 20
-  - 20
-  - 10
-  - 20
-  - 60
-  - 20
-  - 20
+num_channels: 13
+wavelengths_mean_nm: [442, 492, 559, 664, 741, 739, 782, 827, 864, 945, 1373, 1613, 2203]
+wavelengths_sigma_nm: [7, 24, 13, 12, 5, 5, 7, 37, 8, 8, 11, 34, 64]
 senpamae_channels:
   - 1
   - 2

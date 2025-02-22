@@ -12,3 +12,18 @@ keep_sensors: ['QUICKBIRD02', 'GEOEYE01']
 data_path: ${oc.env:DATASETS_DIR}
 image_resolution: 224
 multilabel: false
+senpamae_channels: #senpamae SRF has only 10 channels (S2-10/20m), so indexes below are relative to that list
+  - 0
+  - 1
+  - 2
+  - 6
+
+senpamae_srf_name: rfs_sentinel2_a.npy
+#above:
+# mapping WV -> S2-10/20m
+# B1 -> B1 [X]
+# B2 -> B2 [0] (blue)
+# B3 -> B3 [1] (green)
+# B5 -> B4 [2] (red)
+#..
+# B7 -> B8 [6] (NIR)

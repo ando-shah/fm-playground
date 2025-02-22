@@ -13,3 +13,23 @@ full_spectra: true # for wavelengths_mean_nm and wavelengths_sigma_nm
 
 # Target dataset
 target_dataset_name: dummy-superdove
+
+senpamae_channels: #senpamae SRF has only 10 channels (S2-10/20m), so indexes below are relative to that list
+  - 0
+  - 1
+  - 2
+  - 3
+
+senpamae_srf_name: rfs_sentinel2_a.npy
+#above:
+# mapping SD -> S2-10/20m
+# B1 -> B1 [X]
+# B2 -> B2 [0] (blue)
+# B3 -> X 
+# B4 -> B3 [1] (green)
+# B5 -> X [X]
+# B6 -> B4 [2] (red)
+# B7 -> B5 [3] (red edge)
+# B8 -> B8A [7] (veg red edge)
+
+

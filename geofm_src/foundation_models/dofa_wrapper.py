@@ -47,15 +47,23 @@ class DofaWrapper(EvalModelWrapper):
         for idx in blk_indices:
             self.encoder.blocks[idx].register_forward_hook(
                 lambda m, i, o: self._cache_block(o))
+            
+        # prepare wavelengths
+        wavelengths_mean_microns = []
+        for wl in self.data_config['wavelengths_mean_nm']:
+            if wl > 0:
+                wl = wl / 1e3
+            else:
+                wl = 5.6 # dofa uses 5600 nm for all SAR channels
+            wavelengths_mean_microns.append(wl)
+        self.wavelengths_mean_microns = wavelengths_mean_microns
 
     def _cache_block(self,x):
         self.cache.append(x)
 
     def get_blocks(self, x):
         self.cache = []
-        #convert wavelengths to microns
-        wavelengths_mean_microns = [x/1e3 for x in self.data_config['wavelengths_mean_nm']]
-        self.encoder(x, wavelengths_mean_microns)
+        self.encoder(x, self.wavelengths_mean_microns)
         blocks = self.cache
         self.cache = [] 
         return blocks

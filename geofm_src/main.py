@@ -38,7 +38,6 @@ def print_trainable_parameters(model):
 
 @hydra.main(config_path="configs", config_name="config")
 def main(cfg: DictConfig):
-    is_fastdevrun = cfg.trainer.get('fast_dev_run', False)
     task = cfg.dataset.task
     training_mode = cfg.model.training_mode
     os.environ['CDIR'] = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/')
@@ -201,7 +200,7 @@ def main(cfg: DictConfig):
         # Train
         trainer.fit(pl_task, data_module, ckpt_path=cfg.resume if cfg.resume else None)
 
-        if is_fastdevrun:
+        if cfg.trainer.get('fast_dev_run', False):
             print('No eval for fastdevrun.')
             return
 

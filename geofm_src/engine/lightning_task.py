@@ -2,7 +2,7 @@
 
 from lightning import LightningModule
 import torch
-from util.misc import resize, cls_metric, seg_metric, reg_metric
+from geofm_src.util.misc import resize, cls_metric, seg_metric, reg_metric
 import torch.nn as nn
 from .model import EvalModelWrapper
 from einops import rearrange 
@@ -143,14 +143,7 @@ class LightningClsRegTask(LightningTask):
 
             params_to_optimize = self.linear_classifier.parameters()
 
-        elif mode == 'pe_linear_probe':
-            self.freeze(self.encoder)
-
-            params_to_optimize = list(self.new_pe.parameters())
-
         elif mode == 'partial_finetune':
-            if not self.replace_pe:
-                assert 'params_to_train' in self.model_config, "params_to_train not found in model_config"
             self.freeze(self.encoder)
             encoder_params_to_unfreeze = self._filter_named_params(
                 self.encoder.named_parameters(), self.model_config.params_to_train)

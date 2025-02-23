@@ -1,0 +1,16 @@
+band_names:
+  - "02 - Blue"
+  - "03 - Green"
+  - "04 - Red"
+  - "05 - NIR"
+  - "06 - SWIR1"
+  - "07 - SWIR2"
+num_channels: 6
+wavelengths_mean_nm: [482, 561, 654, 865, 1609, 2204]
+wavelengths_sigma_nm: [23, 22, 14, 11, 34, 76]
+senpamae_channels:
+  - 1
+  - 2
+  - 3
+  - 4
+senpamae_srf_name: rfs_landsat.npy

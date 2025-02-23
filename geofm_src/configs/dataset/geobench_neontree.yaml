@@ -5,9 +5,12 @@ benchmark_name: segmentation_v1.0
 dataset_name: m-NeonTree
 task: segmentation
 band_names:
-  - "Blue"
-  - "Green"
   - "Red"
+  - "Green"
+  - "Blue"
+
+wavelengths_mean_nm: [650, 560, 450]
+wavelengths_sigma_nm: [16, 16, 16]
 num_classes: 2
 multilabel: false
 num_channels: 3

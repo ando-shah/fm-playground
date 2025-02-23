@@ -59,7 +59,7 @@ class SegDataAugmentation(torch.nn.Module):
         if split == "train":
             self.transform = K.augmentation.AugmentationSequential(
                 K.augmentation.CenterCrop(size=size, align_corners=True),
-                K.augmentation.RandomRotation(degrees=90, p=0.5, align_corners=True),
+                # K.augmentation.RandomRotation(degrees=90, p=0.5, align_corners=True),
                 K.augmentation.RandomHorizontalFlip(p=0.5),
                 K.augmentation.RandomVerticalFlip(p=0.5),
                 data_keys=["input", "mask"],

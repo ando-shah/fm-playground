@@ -11,7 +11,8 @@ import torch
 from torch import Generator, Tensor
 from torch.utils.data import random_split
 from torchgeo.datasets import BigEarthNet
-
+from .base_dataset import BaseDataset
+from .utils.utils import ChannelSampler 
 
 class BigEarthNetv2(BigEarthNet):
     """BigEarthNetv2 dataset.
@@ -187,6 +188,14 @@ class BigEarthNetv2(BigEarthNet):
 
 
 class ClsDataAugmentation(torch.nn.Module):
+
+    MEAN: dict = { "s2" : torch.tensor([ 360.64678955078125, 438.3720703125, 614.0556640625, 588.4096069335938, 942.7476806640625,
+                                        1769.8486328125, 2049.475830078125, 2193.2919921875, 2235.48681640625, 2241.10595703125, 1568.2115478515625, 997.715087890625]) ,
+                "s1": torch.tensor([-19.352558135986328, -12.643863677978516,])}
+    STD: dict = { "s2" : torch.tensor([563.1734008789062, 607.02685546875,603.2968139648438,684.56884765625,727.5784301757812,
+                                        1087.4288330078125,1261.4302978515625,1369.3717041015625,1342.490478515625,1294.35546875, 1063.9197998046875,806.8846435546875]),
+                "s1": torch.tensor([5.590505599975586, 5.133493900299072])}
+
     mins_raw = torch.tensor(
         [-70.0, -72.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
     )
@@ -233,38 +242,78 @@ class ClsDataAugmentation(torch.nn.Module):
         ]
     )
 
-    def __init__(self, split, size, bands="all"):
+
+    def __init__(self, split, size, source_chn_ids, band_ids=None, bands="all"):
         super().__init__()
 
-        if bands == "all":
-            mins = self.mins
-            maxs = self.maxs
-        elif bands == "s1":
-            mins = self.mins[:2]
-            maxs = self.maxs[:2]
+        # if bands == "all":
+        #     mins = self.mins
+        #     maxs = self.maxs
+        # elif bands == "s1":
+        #     mins = self.mins[:2]
+        #     maxs = self.maxs[:2]
+        # elif bands == "s2":
+        #     mins = self.mins[2:]
+        #     maxs = self.maxs[2:]
+        # elif bands == "rgb":
+        #     mins = self.mins[2:5].flip(dims=(0,))  # to get RGB order
+        #     maxs = self.maxs[2:5].flip(dims=(0,))
+        if bands == "s1":
+            means = self.MEAN["s1"]
+            stds = self.STD["s1"]
         elif bands == "s2":
-            mins = self.mins[2:]
-            maxs = self.maxs[2:]
+            means = self.MEAN["s2"]
+            stds = self.STD["s2"]
         elif bands == "rgb":
-            mins = self.mins[2:5].flip(dims=(0,))  # to get RGB order
-            maxs = self.maxs[2:5].flip(dims=(0,))
-
+            means = self.MEAN["s2"][1:4].flip(dims=(0,))
+            stds = self.STD["s2"][1:4].flip(dims=(0,))
+            band_ids = [3,2,1]
+        elif bands == "all":
+            means = torch.cat([self.MEAN["s1"], self.MEAN["s2"]])
+            stds = torch.cat([self.STD["s1"], self.STD["s2"]])
+        else:
+            raise ValueError(f"[ClsDataAugmentation] Invalid bands: {bands}")
+        
         self.bands = bands
-        self.mean = mins
-        self.std = maxs - mins
+        self.mean = means
+        self.std = stds
+        self.output_chn_ids = source_chn_ids
+
+        self.transforms = []
+
+        if band_ids is not None:
+            if bands != "rgb": # no need to sample channels, all bands come in in the RGB order
+                chn_sample = ChannelSampler(band_ids)
+                if source_chn_ids is not None:
+                    self.output_chn_ids = source_chn_ids[band_ids]
+                    self.mean = self.mean[band_ids]
+                    self.std = self.std[band_ids]
+
+                    print(f'[ClsDataAugmentation] Sampling channels: {band_ids}')
+                    self.transforms.append(chn_sample)
+                else:
+                    raise ValueError("[ClsDataAugmentation] source_chn_ids must be provided if band_ids are provided")
+            else:
+                self.output_chn_ids = source_chn_ids
+
 
         if split == "train":
-            self.transform = torch.nn.Sequential(
+            self.transforms.extend([
                 K.Normalize(mean=self.mean, std=self.std),
-                K.Resize(size=size, align_corners=True),
+                K.RandomResizedCrop(size=size, scale=(0.8, 1.0)),
                 K.RandomHorizontalFlip(p=0.5),
                 K.RandomVerticalFlip(p=0.5),
-            )
+            ])
         else:
-            self.transform = torch.nn.Sequential(
+            self.transforms.extend([
                 K.Normalize(mean=self.mean, std=self.std),
                 K.Resize(size=size, align_corners=True),
-            )
+            ])
+
+        self.transform = torch.nn.Sequential(*self.transforms)
+
+    def get_chn_ids(self):
+        return self.output_chn_ids
 
     @torch.no_grad()
     def forward(self, sample: dict[str,]):
@@ -276,11 +325,9 @@ class ClsDataAugmentation(torch.nn.Module):
         return x_out, sample["label"]
 
 
-class BenV2Dataset:
+class BenV2Dataset(BaseDataset):
     def __init__(self, config):
-        self.dataset_config = config
-        self.img_size = (config.image_resolution, config.image_resolution)
-        self.root_dir = config.data_path
+        super().__init__(config)
         self.bands = config.bands
         self.num_classes = config.num_classes
 
@@ -292,11 +339,19 @@ class BenV2Dataset:
 
     def create_dataset(self):
         train_transform = ClsDataAugmentation(
-            split="train", size=self.img_size, bands=self.bands
+            split="train", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids
         )
         eval_transform = ClsDataAugmentation(
-            split="test", size=self.img_size, bands=self.bands
+            split="test", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids
         )
+
+        # Override the config with the transformed channel ids
+        output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
+        if output_chn_ids is not None:
+            self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
+            self.config['wavelengths_mean_microns'] = [x/1e3 for x in self.config['wavelengths_mean_nm']]
+            self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
+
 
         dataset_train = BigEarthNetv2(
             root=self.root_dir,

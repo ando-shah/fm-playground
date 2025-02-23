@@ -171,3 +171,5 @@ outputs/
 *.cpython
 
 src/
+
+*.code-workspace

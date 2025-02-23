@@ -3,7 +3,7 @@ defaults:
 
 dataset_type: benv2
 task: classification
-dataset_name: benv2
+dataset_name: null #needs to be set in the lower config
 num_classes: 19
 num_channels: 14
 data_path: ${oc.env:DATASETS_DIR}/benv2

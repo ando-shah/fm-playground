@@ -15,6 +15,10 @@ classification:
   - id: MulticlassAccuracy
     top_k: 1
     average: macro
+  - id: F1Score
+    average: micro
+  - id: F1Score
+    average: macro
 
   ckpt_monitor: val/acc_top-1_micro
 
@@ -46,7 +50,7 @@ regression:
   val:
   - id: MSE
   - id: RMSE
-
+  - id: MAE
 
 segmentation: 
 

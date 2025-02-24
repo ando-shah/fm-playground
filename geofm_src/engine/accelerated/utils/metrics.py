@@ -71,16 +71,24 @@ def build_metric(metric_cfg: List, num_classes, key_prefix='') -> MetricCollecti
             defaults.update(cfg)
             key = f'RMSE'
             val = MeanSquaredError(**defaults)
+
         elif id == 'JaccardIndex':
             defaults = dict(average='micro', task='multiclass')
             defaults.update(cfg)
             key = 'mIoU'
             val = JaccardIndex(num_classes=num_classes, **defaults)
+
         elif id == 'F1Score':
-            defaults = dict(average='macro', task='multiclass')
+            defaults = dict(average='micro', task='multiclass')
             defaults.update(cfg)
             key = 'F1Score'
             val = F1Score(num_classes=num_classes, **defaults)
+
+        elif id == 'MAE':
+            defaults = dict(num_outputs=1)
+            defaults.update(cfg)
+            key = f'MAE'
+            val = MeanAbsoluteError(**defaults)
         else:
             raise ValueError(f"Unknown metric {id}")
         

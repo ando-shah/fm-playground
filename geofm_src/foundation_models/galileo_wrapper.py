@@ -46,8 +46,11 @@ class GalileoWrapper(EvalModelWrapper):
         self.encoder = Encoder.load_from_folder(Path(os.path.dirname(path)), device="cpu")
         
         self.norm = self.encoder.norm
+
+        self.galileo_train_config = OmegaConf.load(os.path.join(os.path.dirname(path), "config.json"))
+
+        self.exit_token_cfg = self.galileo_train_config.token_exit_cfg
     
-        
         # prepare hooks
         for idx in blk_indices:
             self.encoder.blocks[idx].register_forward_hook(

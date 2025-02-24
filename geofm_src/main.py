@@ -77,6 +77,7 @@ def main(cfg: DictConfig):
 
         # Scale learning rate
         assert (cfg.lr == -1) != (cfg.base_lr == -1), "either lr or base_lr should be set"
+        
         if cfg.lr == -1:
             cfg.lr = cfg.base_lr * cfg.num_gpus
 
@@ -213,6 +214,10 @@ def main(cfg: DictConfig):
 
     elif engine == 'accelerated':
         
+        print("CONFIG MODEL")
+        print(cfg.model)
+        print(cfg.model.keys())
+
         data_module.setup()
         setup_logger('eval', to_sysout=True, filename=os.path.join(cfg.output_dir, 'log.txt'))
         logger = logging.getLogger("eval")
@@ -229,6 +234,8 @@ def main(cfg: DictConfig):
             learning_rates = cfg.lr,
         ))
 
+        print("CONFIG DATASET")
+        print(cfg.dataset)
         if task == 'classification':
             if cfg.dataset.multilabel:
                 logger.info('Multilabel classification')

@@ -5,6 +5,7 @@ from .DOFA.models_dwv import vit_large_patch16 as vit_large_patch16_cls
 from torchvision.datasets.utils import download_url
 
 from geofm_src.engine.model import EvalModelWrapper
+from einops import rearrange
 
 
 
@@ -67,6 +68,11 @@ class DofaWrapper(EvalModelWrapper):
         blocks = self.cache
         self.cache = [] 
         return blocks
+
+    def default_blocks_to_feature_list(self, block_list) -> list[torch.Tensor]:
+        patch_size = int(block_list[0].size(1) ** 0.5)
+        out = [rearrange(f[:, 1:, :], "b (h w) c -> b c h w", h=patch_size, w=patch_size) for f in block_list]
+        return out
 
     def default_blocks_to_featurevec(self, block_list):
         x = block_list[-1][:, 1:,:].mean(dim=1)

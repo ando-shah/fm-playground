@@ -63,6 +63,10 @@ class CromaWrapper(EvalModelWrapper):
     def default_blocks_to_featurevec(self, block_list):
         # the following is how the tokens are passed into the {mod}_GAP_FFN networks
         return self.norm(block_list[-1]).mean(dim=1)
+
+    def default_blocks_to_feature_list(self, block_list) -> list[torch.Tensor]:
+        """Pass through the output of get_blocks."""
+        return block_list
     
     def replace_pe(self, num_channels):
         mod = self.model_config.modality

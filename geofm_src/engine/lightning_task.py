@@ -6,6 +6,7 @@ from geofm_src.util.misc import resize, cls_metric, seg_metric, reg_metric
 import torch.nn as nn
 from .model import EvalModelWrapper
 from einops import rearrange 
+from torch import Tensor
 
 try:
     from mmseg.models.necks import Feature2Pyramid
@@ -17,8 +18,9 @@ except:
 
 
 class LightningTask(LightningModule):
-    def __init__(self, args, model_config, data_config):
+    def __init__(self, args, model_config, data_config, encoder):
         super().__init__()
+        self.encoder = encoder
         self.model_config = model_config  # model_config
         self.args = args  # args for optimization params
         self.data_config = data_config  # dataset_config
@@ -38,6 +40,16 @@ class LightningTask(LightningModule):
 
     def log_metrics(self, outputs, targets, prefix="train"):
         raise NotImplementedError('Subclass must implement this method')
+
+
+    def training_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, prefix="train")
+
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, prefix="val")
+    
+    def test_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, prefix="test")
 
     def _proc_param_obj(self, obj):
         if isinstance(obj, nn.Module): 
@@ -104,11 +116,10 @@ class LightningClsRegTask(LightningTask):
 
     encoder: EvalModelWrapper
 
-    def __init__(self, args, model_config, data_config, model_wrapper: EvalModelWrapper):
-        super().__init__(args, model_config, data_config)
+    def __init__(self, args, model_config, data_config, encoder: EvalModelWrapper):
+        super().__init__(args, model_config, data_config, encoder)
         task = data_config.task
         self.replace_pe = model_config.replace_pe
-        self.encoder = model_wrapper
 
         if task == 'classification':
             self.criterion = (
@@ -197,15 +208,6 @@ class LightningClsRegTask(LightningTask):
         self.log_metrics(outputs, targets, prefix)
         return loss
 
-    def training_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, prefix="train")
-
-    def validation_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, prefix="val")
-    
-    def test_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, prefix="test")
-
     def loss(self, outputs, labels):
         return self.criterion(outputs, labels)
     
@@ -257,11 +259,12 @@ class LightningSegmentationTask(LightningTask):
 
     encoder: torch.nn.Module
 
-    def __init__(self, args, model_config, data_config):
-        super().__init__(args, model_config, data_config)
+    def __init__(self, args, model_config, data_config, encoder: EvalModelWrapper):
+        super().__init__(args, model_config, data_config, encoder)
         assert MMSEGM_AVAIL, "MMSEG needs to be installed"
         self.embed_dim = model_config.embed_dim
         self.criterion = nn.CrossEntropyLoss()
+        self._build_default_segm_modules()
 
     def _build_default_segm_modules(self):
         edim = self.embed_dim
@@ -297,46 +300,51 @@ class LightningSegmentationTask(LightningTask):
         )
 
     def freeze_and_return_params(self):
-        segm_params = (
-            list(self.neck.parameters())
-            + list(self.decoder.parameters())
-            + list(self.aux_head.parameters()))
-
         if self.training_mode == 'full_finetune':
             self.unfreeze(self.encoder)
-            self.unfreeze(segm_params)
         elif self.training_mode == 'frozen_backbone':
             self.freeze(self.encoder)
-            self.unfreeze(segm_params)
         else:
             raise ValueError(f"Invalid mode: {self.training_mode}")
 
-        return segm_params
+        self.unfreeze(self.neck)
+        self.unfreeze(self.decoder)
+        self.unfreeze(self.aux_head)
+
+        return (
+            list(self.neck.parameters())
+            + list(self.decoder.parameters())
+            + list(self.aux_head.parameters()))
     
-    def _forward_feats(self, samples):
+    def _forward_feats(self, x: Tensor):
         """ returns features from the encoder ready to be inputted to self.neck """
-        raise NotImplementedError('Subclass must implement this method')
-
-    def forward(self, samples):
-        feats = self._forward_feats(samples)
-
-        feats = [
-            rearrange(out, "n (h w) c -> n c h w", h=int(out.size(1) ** 0.5))
-            for out in feats
-        ]
+        feats = self.encoder.get_blocks(x)
+        feats = self.encoder.default_blocks_to_feature_list(feats)
+        return feats
+        
+    def forward(self, images):
+        """Forward pass of the model."""
+        feats = self._forward_feats(images)
 
         feats = self.neck(feats)
         out = self.decoder(feats)
-        out = resize(out, size=samples.shape[2:], mode="bilinear", align_corners=False)
+        out = resize(out, size=images.shape[2:], mode="bilinear", align_corners=False)
         out_a = self.aux_head(feats)
         out_a = resize(
-            out_a, size=samples.shape[2:], mode="bilinear", align_corners=False
+            out_a, size=images.shape[2:], mode="bilinear", align_corners=False
         )
         return out, out_a
+
+    def _step(self, batch, batch_idx, prefix="train"):
+        images, targets = batch
+        outputs = self(images)
+        loss = self.loss(outputs, targets)
+        self.log_metrics(outputs, targets, prefix)
+        return loss
     
     def loss(self, outputs, labels):
-        return self.criterion(outputs[0], labels) + 0.4 * self.criterion(
-            outputs[1], labels
+        return self.criterion(outputs[0], labels.long()) + 0.4 * self.criterion(
+            outputs[1], labels.long()
         )
 
     def log_metrics(self, outputs, targets, prefix="train"):

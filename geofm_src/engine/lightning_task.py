@@ -301,14 +301,12 @@ class LightningSegmentationTask(LightningTask):
     
     def _forward_feats(self, x: Tensor):
         """ returns features from the encoder ready to be inputted to self.neck """
-        feats = self.encoder.get_blocks(x)
-        feats = self.encoder.default_blocks_to_feature_list(feats)
+        feats = self.encoder.default_input_to_feature_list(x)
         return feats
         
     def forward(self, images):
         """Forward pass of the model."""
         feats = self._forward_feats(images)
-
         feats = self.neck(feats)
         out = self.decoder(feats)
         out = resize(out, size=images.shape[2:], mode="bilinear", align_corners=False)

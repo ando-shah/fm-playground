@@ -9,6 +9,7 @@ from lightning.pytorch.strategies import DDPStrategy
 from datasets.data_module import BenchmarkDataModule
 from lightning.pytorch import seed_everything
 from factory import create_model
+from omegaconf import open_dict
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import pandas as pd
@@ -86,7 +87,8 @@ def main(cfg: DictConfig):
     key = task
     if cfg.dataset.multilabel:
         key = f'multilabel_{key}'
-    cfg.task_kwargs = task_kwargs[key]
+    with open_dict(cfg):
+        cfg.task_kwargs = task_kwargs[key]
 
 
     # setup output dir

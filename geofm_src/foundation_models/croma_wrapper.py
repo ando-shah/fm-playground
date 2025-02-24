@@ -1,6 +1,7 @@
 from geofm_src.engine.lightning_task import LightningClsRegTask, LightningSegmentationTask
 from .CROMA.use_croma import PretrainedCROMA
 import torch
+from torch import Tensor
 import os
 from torchvision.datasets.utils import download_url
 from geofm_src.engine.base import LinearHead
@@ -64,9 +65,9 @@ class CromaWrapper(EvalModelWrapper):
         # the following is how the tokens are passed into the {mod}_GAP_FFN networks
         return self.norm(block_list[-1]).mean(dim=1)
 
-    def default_blocks_to_feature_list(self, block_list) -> list[torch.Tensor]:
+    def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
         """Pass through the output of get_blocks."""
-        return block_list
+        return self.get_blocks(x)
     
     def replace_pe(self, num_channels):
         mod = self.model_config.modality

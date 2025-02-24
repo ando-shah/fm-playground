@@ -1,4 +1,5 @@
 import torch
+from torch import Tensor
 import os
 from .DOFA.models_dwv import vit_base_patch16 as vit_base_patch16_cls
 from .DOFA.models_dwv import vit_large_patch16 as vit_large_patch16_cls
@@ -69,7 +70,8 @@ class DofaWrapper(EvalModelWrapper):
         self.cache = [] 
         return blocks
 
-    def default_blocks_to_feature_list(self, block_list) -> list[torch.Tensor]:
+    def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
+        block_list = self.get_blocks(x)
         patch_size = int(block_list[0].size(1) ** 0.5)
         out = [rearrange(f[:, 1:, :], "b (h w) c -> b c h w", h=patch_size, w=patch_size) for f in block_list]
         return out

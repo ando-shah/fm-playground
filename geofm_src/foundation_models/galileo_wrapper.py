@@ -7,6 +7,8 @@ from .galileo.model import Encoder
 
 from typing import Any
 from pathlib import Path
+from omegaconf import OmegaConf
+
 import os
 from torchvision.datasets.utils import download_url
 
@@ -49,7 +51,11 @@ class GalileoWrapper(EvalModelWrapper):
 
         self.galileo_train_config = OmegaConf.load(os.path.join(os.path.dirname(path), "config.json"))
 
-        self.exit_token_cfg = self.galileo_train_config.token_exit_cfg
+        print(self.galileo_train_config.keys())
+        print(self.galileo_train_config)
+
+        self.exit_token_cfg = self.galileo_train_config.training.token_exit_cfg
+        self.target_exit_after = self.galileo_train_config.training.target_exit_after
     
         # prepare hooks
         for idx in blk_indices:
@@ -115,11 +121,19 @@ class GalileoWrapper(EvalModelWrapper):
 
     def get_blocks(self, x):
         self.cache = []
-        # TODO these arguments will be different for segmentation 
         self.encoder(patch_size=self.model_config.patch_size, **self.format_input(x, self.model_config.input_key))
         blocks = self.cache
         self.cache = [] 
         return blocks
+
+    def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
+        self.cache = []
+        self.encoder(patch_size=self.model_config.patch_size, token_exit_cfg=self.exit_token_cfg, **self.format_input(x, self.model_config.input_key))
+        blocks = self.cache
+        patch_size = int(blocks[0].size(1) ** 0.5)
+        out = [rearrange(f[:, 1:, :], "b (h w) c -> b c h w", h=patch_size, w=patch_size) for f in blocks]
+        self.cache = []
+        return out
 
     def default_blocks_to_featurevec(self, block_list):
         x = block_list[-1][:, 1:,:].mean(dim=1)

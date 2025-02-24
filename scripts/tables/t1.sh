@@ -102,7 +102,6 @@ elif [ $training_mode == 'partial_finetune' ]; then
         echo "partial finetune with lr=$lr"
         lr_cmd="$cmd \
             +lr=$lr \
-            +base_lr=-1 \
             +model.params_to_train=[] \
             warmup_epochs=$warmup_epochs \
             "

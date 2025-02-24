@@ -31,7 +31,6 @@ do
         +model.training_mode=$training_mode \
         \
         +lr=1e-3 \
-        +base_lr=-1\
         epochs=1 \
         warmup_epochs=0 \
         \

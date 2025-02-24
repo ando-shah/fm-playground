@@ -12,7 +12,7 @@ import torch
 from torch import Tensor
 from torchmetrics import MetricCollection
 from torchmetrics import Accuracy
-from torchmetrics.classification import MulticlassAccuracy, MultilabelAveragePrecision, MultilabelF1Score
+from torchmetrics.classification import MulticlassAccuracy, MultilabelAveragePrecision, MultilabelF1Score, JaccardIndex, F1Score
 from torchmetrics.regression import MeanSquaredError
 
 from . import distributed
@@ -22,6 +22,7 @@ logger = logging.getLogger("eval")
 
 
 def build_metric(metric_cfg: List, num_classes, key_prefix='') -> MetricCollection:
+    # TODO I think we can remove this and just target these directyl through the config
     metric_cfg = deepcopy(metric_cfg)
     if isinstance(num_classes, Tensor):
         num_classes = num_classes.item()
@@ -70,7 +71,16 @@ def build_metric(metric_cfg: List, num_classes, key_prefix='') -> MetricCollecti
             defaults.update(cfg)
             key = f'RMSE'
             val = MeanSquaredError(**defaults)
-
+        elif id == 'JaccardIndex':
+            defaults = dict(average='micro', task='multiclass')
+            defaults.update(cfg)
+            key = 'mIoU'
+            val = JaccardIndex(num_classes=num_classes, **defaults)
+        elif id == 'F1Score':
+            defaults = dict(average='macro', task='multiclass')
+            defaults.update(cfg)
+            key = 'F1Score'
+            val = F1Score(num_classes=num_classes, **defaults)
         else:
             raise ValueError(f"Unknown metric {id}")
         

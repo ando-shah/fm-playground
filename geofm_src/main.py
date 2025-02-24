@@ -9,6 +9,7 @@ from lightning.pytorch.strategies import DDPStrategy
 from datasets.data_module import BenchmarkDataModule
 from lightning.pytorch import seed_everything
 from factory import create_model
+from omegaconf import open_dict
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import pandas as pd
@@ -77,6 +78,7 @@ def main(cfg: DictConfig):
 
         # Scale learning rate
         assert (cfg.lr == -1) != (cfg.base_lr == -1), "either lr or base_lr should be set"
+        
         if cfg.lr == -1:
             cfg.lr = cfg.base_lr * cfg.num_gpus
 
@@ -85,7 +87,8 @@ def main(cfg: DictConfig):
     key = task
     if cfg.dataset.multilabel:
         key = f'multilabel_{key}'
-    cfg.task_kwargs = task_kwargs[key]
+    with open_dict(cfg):
+        cfg.task_kwargs = task_kwargs[key]
 
 
     # setup output dir
@@ -220,6 +223,10 @@ def main(cfg: DictConfig):
 
     elif engine == 'accelerated':
         
+        print("CONFIG MODEL")
+        print(cfg.model)
+        print(cfg.model.keys())
+
         data_module.setup()
         setup_logger('eval', to_sysout=True, filename=os.path.join(cfg.output_dir, 'log.txt'))
         logger = logging.getLogger("eval")

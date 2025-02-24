@@ -94,8 +94,9 @@ class TropicalCycloneDataset(BaseDataset):
         dataset_val = dm.val_dataset
         dataset_test = dm.test_dataset
 
-        dataset_train.dataset.transforms = train_transform
+        
         dataset_val.dataset.transforms = eval_transform
         dataset_test.transforms = eval_transform
+        dataset_train.dataset.transforms = train_transform # for some reason this ordering is important
 
         return dataset_train, dataset_val, dataset_test

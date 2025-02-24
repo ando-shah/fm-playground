@@ -33,6 +33,7 @@ class RegDataAugmentation(torch.nn.Module):
             )
         else:
             self.transform = torch.nn.Sequential(
+                
                 K.Normalize(mean=mean, std=std),
                 K.Resize(size=size, align_corners=True),
             )
@@ -88,8 +89,9 @@ class DigitalTyphoonDataset(BaseDataset):
         dataset_val = dm.val_dataset
         dataset_test = dm.test_dataset
 
-        dataset_train.dataset.transforms = train_transform
+        
         dataset_val.dataset.transforms = eval_transform
         dataset_test.dataset.transforms = eval_transform
+        dataset_train.dataset.transforms = train_transform # for some reason this ordering is important
 
         return dataset_train, dataset_val, dataset_test

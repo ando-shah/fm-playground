@@ -5,8 +5,9 @@ dataset_type: digital_typhoon
 task: regression
 dataset_name: digital_typhoon
 num_classes: 1
-num_channels: 2 # dataset comes in sequences of 3, height, width by default
+num_channels: 1 # dataset comes in sequences of 3, height, width by default
 data_path: ${oc.env:DATASETS_DIR}/DigitalTyphoon
+band_ids: [0]
 image_resolution: 224
 multilabel: false
-sequence_length: 2 # number of timesteps in the sequence
+sequence_length: 1 # number of timesteps in the sequence

@@ -236,22 +236,6 @@ def main(cfg: DictConfig):
             learning_rates = cfg.lr,
         ))
 
-        if task == 'classification':
-            if cfg.dataset.multilabel:
-                logger.info('Multilabel classification')
-                criterion_cfg = {'id': 'MultiLabelSoftMarginLoss'}
-                val_metrics = [{'id': 'MultilabelAccuracy'}]
-            else:
-                logger.info('Multiclass classification')
-                criterion_cfg = {'id': 'CrossEntropyLoss'}
-                val_metrics = [{'id': 'MulticlassAccuracy'}]
-        elif task == 'regression':
-            logger.info('Regression')
-            criterion_cfg = {'id': 'MSELoss'}
-            val_metrics = [{'id': 'RMSE'}]
-        else:
-            raise NotImplementedError()
-
         results_list = run_eval_linear(
             model_wrapper,
             cfg.output_dir,
@@ -263,8 +247,8 @@ def main(cfg: DictConfig):
             heads_cfg,
             cfg.epochs,
             eval_period_epoch = cfg.trainer.check_val_every_n_epoch,
-            criterion_cfg = criterion_cfg,
-            val_metrics = val_metrics,
+            criterion_cfg = cfg.task_kwargs.criterion,
+            val_metrics = cfg.task_kwargs.val,
         )
 
         results = pd.DataFrame(results_list)

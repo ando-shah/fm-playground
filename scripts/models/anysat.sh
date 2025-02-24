@@ -87,7 +87,7 @@ do
         seed=13 \
         +trainer.fast_dev_run=True \
         \
-        dataset.subset.train=0.1 # just as example how to use subset
+        dataset.subset.train=64 dataset.subset.val=64 dataset.subset.test=64
             
     # done
 done

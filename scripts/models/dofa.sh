@@ -31,6 +31,7 @@ all_tasks=(
     'base/dofa linear_probe geobench_cashew_10b'
     'base/dofa linear_probe geobench_cashew_12b'
     'base/dofa linear_probe geobench_cashew_rgb'
+
     'base/dofa linear_probe resisc45'
 
     'base/dofa linear_probe benv2_s1'
@@ -38,16 +39,27 @@ all_tasks=(
     'base/dofa linear_probe benv2_s2_10b'
     'base/dofa linear_probe benv2_rgb'
 
+
+    'base/dofa linear_probe benv2_s2_4b'
+
     'base/dofa linear_probe tropical_cyclone'
     'base/dofa linear_probe corine_21'
-    'base/dofa linear_probe corine_sd'
-    'base/dofa linear_probe hyperview_21b'
-    'base/dofa linear_probe digital_typhoon_3b'
 
-    # 'base/dofa linear_probe fmow_8b'
+
+    'base/dofa linear_probe corine_sd'
+    'base/dofa linear_probe corine_s2_10b'
+    'base/dofa linear_probe corine_10b'
+    'base/dofa linear_probe corine_1b'
+
+    'base/dofa linear_probe hyperview_10b'
+    'base/dofa linear_probe hyperview_21b'
+
+    'base/dofa linear_probe fmow_8b'
+    'base/dofa linear_probe fmow_rgb'
     'base/dofa linear_probe fmow_4b'
     
-    # 'base/dofa linear_probe digital_typhoon_1b'
+    'base/dofa linear_probe digital_typhoon_1b'
+    'base/dofa linear_probe digital_typhoon_3b'
     )
 
 suffix='debug'
@@ -80,7 +92,7 @@ do
         seed=13 \
         +trainer.fast_dev_run=True \
         \
-        dataset.subset.train=0.1 # just as example how to use subset
+        dataset.subset.train=64 dataset.subset.val=64 dataset.subset.test=64 # just as example how to use subset
             
     # done
 done

@@ -2,10 +2,11 @@
 
 from lightning import LightningModule
 import torch
-from geofm_src.util.misc import resize, cls_metric, seg_metric, reg_metric
+from geofm_src.util.misc import resize, seg_metric
 import torch.nn as nn
 from .model import EvalModelWrapper
 from einops import rearrange 
+from geofm_src.engine.accelerated.utils.metrics import build_metric, build_criterion
 
 try:
     from mmseg.models.necks import Feature2Pyramid
@@ -25,6 +26,14 @@ class LightningTask(LightningModule):
         self.training_mode = model_config.training_mode
         self.save_hyperparameters()
 
+        self.train_metrics = build_metric(
+            args.task_kwargs.train, num_classes=data_config.num_classes, key_prefix='train/') 
+        self.val_metrics = build_metric(
+            args.task_kwargs.val, num_classes=data_config.num_classes, key_prefix='val/') 
+        self.test_metrics = build_metric(
+            args.task_kwargs.val, num_classes=data_config.num_classes, key_prefix='test/') 
+
+
     def freeze_and_return_params(self):
         """ freeze & unfreeze weights according to self.training_mode, also
             returns all parameters to optimize """
@@ -36,8 +45,11 @@ class LightningTask(LightningModule):
     def loss(self, outputs, labels):
         raise NotImplementedError('Subclass must implement this method')
 
-    def log_metrics(self, outputs, targets, prefix="train"):
-        raise NotImplementedError('Subclass must implement this method')
+    def log_metrics(self, outputs, targets, loss, prefix="train"):
+        metrics = self.__getattr__(f"{prefix}_metrics")
+        out_dict = metrics(outputs, targets)
+        self.log(f"{prefix}/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log_dict(out_dict, on_epoch=True, on_step=True, prog_bar=True)
 
     def _proc_param_obj(self, obj):
         if isinstance(obj, nn.Module): 
@@ -106,23 +118,10 @@ class LightningClsRegTask(LightningTask):
 
     def __init__(self, args, model_config, data_config, model_wrapper: EvalModelWrapper):
         super().__init__(args, model_config, data_config)
-        task = data_config.task
         self.replace_pe = model_config.replace_pe
         self.encoder = model_wrapper
 
-        if task == 'classification':
-            self.criterion = (
-                nn.MultiLabelSoftMarginLoss()
-                if self.data_config.multilabel
-                else nn.CrossEntropyLoss())
-            self.log_metrics = self._log_metrics_cls
-
-        elif task == 'regression':
-            self.criterion = nn.MSELoss()
-            self.log_metrics = self._log_metrics_reg
-
-        else: 
-            raise NotImplementedError()
+        self.criterion = build_criterion(args.task_kwargs.criterion)
               
         self.linear_classifier = nn.Linear(
             in_features=model_config.embed_dim, out_features=data_config.num_classes)
@@ -194,7 +193,7 @@ class LightningClsRegTask(LightningTask):
         outputs = self.linear_classifier(x)
 
         loss = self.loss(outputs, targets)
-        self.log_metrics(outputs, targets, prefix)
+        self.log_metrics(outputs, targets, loss, prefix)
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -208,26 +207,6 @@ class LightningClsRegTask(LightningTask):
 
     def loss(self, outputs, labels):
         return self.criterion(outputs, labels)
-    
-    def _log_metrics_cls(self, outputs, targets, prefix="train"):
-        """ Calculate accuracy and other classification-specific metrics """
-        acc1, acc5 = cls_metric(self.data_config, outputs, targets)
-        self.log(
-            f"{prefix}_loss",
-            self.loss(outputs, targets),
-            on_step=True,
-            on_epoch=True,
-            prog_bar=True,
-        )
-        self.log(f"{prefix}_acc1", acc1, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_acc5", acc5, on_step=True, on_epoch=True, prog_bar=True)
-
-    def _log_metrics_reg(self, outputs, targets, prefix="train"):
-        # Calculate accuracy and other classification-specific metrics
-        rmse, mse, mae = reg_metric(self.data_config, outputs[0], targets)
-        self.log(f"{prefix}_rmse", rmse, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_mse", mse, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_mae", mae, on_step=True, on_epoch=True, prog_bar=True)
 
     def _get_encoder_params_without_head(self, verbose=False, with_name=True):
         if self.dot_str_of_linear_classifier is None:

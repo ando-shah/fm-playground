@@ -16,8 +16,6 @@ from torchmetrics.functional import jaccard_index, accuracy
 
 
 
-
-
 def resize(
     input,
     size=None,

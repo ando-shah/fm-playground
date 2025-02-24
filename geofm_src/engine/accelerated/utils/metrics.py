@@ -21,7 +21,7 @@ import torch.nn as nn
 logger = logging.getLogger("eval")
 
 
-def build_metric(metric_cfg: List, num_classes):
+def build_metric(metric_cfg: List, num_classes, key_prefix='') -> MetricCollection:
     metric_cfg = deepcopy(metric_cfg)
     if isinstance(num_classes, Tensor):
         num_classes = num_classes.item()
@@ -74,7 +74,7 @@ def build_metric(metric_cfg: List, num_classes):
         else:
             raise ValueError(f"Unknown metric {id}")
         
-        ret[key] = val
+        ret[f'{key_prefix}{key}'] = val
     return MetricCollection(ret)
 
 def build_criterion(cfg):

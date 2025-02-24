@@ -41,6 +41,7 @@ def main(cfg: DictConfig):
     task = cfg.dataset.task
     training_mode = cfg.model.training_mode
     os.environ['CDIR'] = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/')
+    default_config_dir = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/task_defaults/')
 
     # assign engine
     if training_mode in ['linear_probe','knn']:
@@ -49,7 +50,6 @@ def main(cfg: DictConfig):
         engine = 'lightning'
 
     # engine specific input handling
-    default_config_dir = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/task_defaults/')
     if engine == 'accelerated':
         defaults = OmegaConf.load(os.path.join(default_config_dir, 'linear_probe_accel.yaml'))
         cfg = OmegaConf.merge(defaults, cfg)
@@ -80,6 +80,14 @@ def main(cfg: DictConfig):
         if cfg.lr == -1:
             cfg.lr = cfg.base_lr * cfg.num_gpus
 
+    # get metrics
+    task_kwargs = OmegaConf.load(os.path.join(default_config_dir, 'metrics_and_criterion.yaml'))
+    key = task
+    if cfg.dataset.multilabel:
+        key = f'multilabel_{key}'
+    cfg.task_kwargs = task_kwargs[key]
+
+
     # setup output dir
     experiment_name = os.path.relpath(cfg.output_dir, os.environ['ODIR'])
     if cfg.add_defining_args:
@@ -108,9 +116,8 @@ def main(cfg: DictConfig):
 
     seed_everything(cfg.seed)
 
-
-
     # print & save config
+    cfg = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
     OmegaConf.save(cfg, os.path.join(cfg.output_dir, "config.yaml"))
     print(OmegaConf.to_yaml(cfg))
@@ -152,12 +159,12 @@ def main(cfg: DictConfig):
 
 
         # Callbacks
-        model_monitor = "val_miou" if task == "segmentation" else "val_acc1"
+        monitor = cfg.task_kwargs.ckpt_monitor
         callbacks = [
             ModelCheckpoint(
                 dirpath=os.path.join(cfg.output_dir, "checkpoints"),
                 filename="best_model-{epoch}",
-                monitor=model_monitor,
+                monitor=monitor,
                 mode="max",
                 save_last=True,
             ),

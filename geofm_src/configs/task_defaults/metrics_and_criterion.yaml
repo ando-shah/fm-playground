@@ -1,0 +1,51 @@
+classification:
+
+  criterion:
+    id: CrossEntropyLoss
+
+  train:
+  - id: MulticlassAccuracy
+    top_k: 1
+    average: micro
+
+  val:
+  - id: MulticlassAccuracy
+    top_k: 1
+    average: micro
+  - id: MulticlassAccuracy
+    top_k: 1
+    average: macro
+
+  ckpt_monitor: val/acc_top-1_micro
+
+
+multilabel_classification:
+
+  criterion:
+    id: MultiLabelSoftMarginLoss
+
+  train:
+  - id: MultiLabelAveragePrecision
+    average: micro
+
+  val:
+  - id: MultiLabelAveragePrecision
+    average: micro
+  - id: MultiLabelAveragePrecision
+    average: macro
+
+
+regression: 
+
+  criterion:
+    id: MSELoss
+
+  train:
+  - id: MSE
+
+  val:
+  - id: MSE
+  - id: RMSE
+
+
+segmentation: []

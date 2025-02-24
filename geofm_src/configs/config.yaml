@@ -22,4 +22,5 @@ overwrite: true
 
 trainer: 
   check_val_every_n_epoch: 1000
+task_kwargs: null
 add_defining_args: true

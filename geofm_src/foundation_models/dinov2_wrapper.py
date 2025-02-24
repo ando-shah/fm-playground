@@ -1,10 +1,14 @@
 import torch
 from geofm_src.engine.model import EvalModelWrapper
 from torch import nn
+from einops import rearrange
+from torch import Tensor
+
 
 class DinoV2Wrapper(EvalModelWrapper):
 
     def load_encoder(self, blk_indices):
+        print("BLK INDICES: ", blk_indices)
         self.encoder = torch.hub.load("facebookresearch/dinov2", self.model_config.dinov2_torchhub_id)
         self.norm = self.encoder.norm
         self.blk_indices = blk_indices
@@ -19,6 +23,12 @@ class DinoV2Wrapper(EvalModelWrapper):
 
     def default_blocks_to_featurevec(self, block_list):
         out = self.norm(block_list[-1])[:,0]
+        return out
+
+    def default_blocks_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
+        block_list = self.get_blocks(x)
+        patch_size = int(block_list[0].size(1) ** 0.5)
+        out = [rearrange(f[:, 1:, :], "b (h w) c -> b c h w", h=patch_size, w=patch_size) for f in block_list]
         return out
 
     def replace_pe(self, num_channels):

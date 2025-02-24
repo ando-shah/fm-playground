@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 from torch import Tensor
-from einops import repeat
+from einops import repeat, rearrange
 
 
 from geofm_src.engine.model import EvalModelWrapper
@@ -52,8 +52,22 @@ class AnySatWrapper(EvalModelWrapper):
                 x = x.unsqueeze(1)
                 dates = torch.arange(x.shape[1]).float()
 
+            case "l7":
+                assert x.shape[1] == 6, "Input tensor for l7 should have 6 channels"
+                # unsqueeze time dimension
+                x = x.unsqueeze(1)
+                dates = torch.arange(x.shape[1]).float()
+
             case "spot":
                 assert x.shape[1] == 3, "Input tensor for spot should have 3 channels"
+                dates = None
+
+            case "naip":
+                assert x.shape[1] == 4, "Input tensor for naip should have 4 channels"
+                dates = None
+
+            case 'aerial':
+                assert x.shape[1] == 4, "Input tensor for aerial should have 4 channels"
                 dates = None
 
         anysat_input = {input_key: x}
@@ -71,6 +85,15 @@ class AnySatWrapper(EvalModelWrapper):
         blocks = self.cache
         self.cache = [] 
         return blocks
+
+    def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
+        self.cache = []
+        self.encoder(self.format_input(x, self.model_config.input_key), patch_size=10, output='dense', output_modality=self.model_config.input_key)
+        blocks = self.cache
+        self.cache = []
+        patch_size = int(blocks[0].size(1) ** 0.5)
+        out = [rearrange(f[:, 1:, :], "b (h w) c -> b c h w", h=patch_size, w=patch_size) for f in blocks]
+        return out
 
     def default_blocks_to_featurevec(self, block_list):
         x = block_list[-1][:, 1:,:].mean(dim=1)

@@ -1,12 +1,10 @@
-
-
-export $(cat /home/hk-project-pai00028/tum_mhj8661/code/fm-playground/.env)
-# export PYTHONPATH='/home/hk-project-pai00028/tum_mhj8661/code/fm-playground'
-cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
+##### export env variables
+export $(cat /home/hk-project-pai00028/tum_mhj8661/code/fm-playground/.env) # horeka
+#####
 
 
 fastdevrun=true
-exp_base_name=debug/t1
+exp_base_name=debug2/t1
 task_id=$1
 
 all_tasks=(
@@ -35,7 +33,7 @@ lrs_linear_probe='[1e-5,5e-5,1e-4,5e-4,1e-3,5e-3,1e-2,5e-2,0.1,0.2,0.3,0.5,1,3,5
 
 ########## pe linear probe (=partial finetune) defaults
 
-lrs_partial_ft=(10 1 0.1 0.01)
+lrs_partial_ft="10 0.1 0.01 0.001"
 warmup_epochs=0
 
 ########## defaults both
@@ -43,7 +41,7 @@ warmup_epochs=0
 epochs=50
 batch_size=500
 num_workers=8
-
+check_val_every_n_epoch=10
 
 
 ########## extract task specific parameters
@@ -58,7 +56,7 @@ ds=$3
 
 ########## execution
 
-cmd="$cmd \
+cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py \
     model=$model \
     dataset=$ds \
     output_dir=$ODIR/$exp_base_name/$ds/$model/$training_mode/ \
@@ -74,9 +72,9 @@ cmd="$cmd \
 
 if $fastdevrun; then
     echo "fastdevrun!"
-    cmd="$cmd epochs=1 batch_size=32"
+    cmd="$cmd epochs=1 batch_size=32 trainer.check_val_every_n_epoch=1"
 else
-    cmd="$cmd epochs=$epochs batch_size=$batch_size"
+    cmd="$cmd epochs=$epochs batch_size=$batch_size trainer.check_val_every_n_epoch=$check_val_every_n_epoch"
 fi
 
 
@@ -96,19 +94,20 @@ if [ $training_mode == 'linear_probe' ]; then
 elif [ $training_mode == 'partial_finetune' ]; then
 
     if $fastdevrun; then
-        cmd="$cmd +trainer.fast_dev_run=$fastdevrun"
-        lrs_partial_ft=(10 0.1)
+        cmd="$cmd dataset.subset.train=64 dataset.subset.val=64 dataset.subset.test=64"
+        lrs_partial_ft="0.1 0.01"
     fi
 
     for lr in $lrs_partial_ft; do
         echo "partial finetune with lr=$lr"
-        cmd="$cmd \
+        lr_cmd="$cmd \
             +lr=$lr \
             +base_lr=-1 \
             +model.params_to_train=[] \
             warmup_epochs=$warmup_epochs \
             "
-        $cmd
+        echo $lr_cmd
+        $lr_cmd
     done
 fi
         

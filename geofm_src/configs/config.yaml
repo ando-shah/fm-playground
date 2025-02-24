@@ -20,5 +20,6 @@ resume: null
 logger: mlflow
 overwrite: true
 
-trainer_kwargs: null # additional kwargs for the lightning trainer
+trainer: 
+  check_val_every_n_epoch: 1000
 add_defining_args: true

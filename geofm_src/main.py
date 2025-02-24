@@ -255,7 +255,7 @@ def main(cfg: DictConfig):
             dl_cfg,
             heads_cfg,
             cfg.epochs,
-            eval_period_epoch = 10,
+            eval_period_epoch = cfg.trainer.check_val_every_n_epoch,
             criterion_cfg = criterion_cfg,
             val_metrics = val_metrics,
         )

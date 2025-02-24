@@ -41,6 +41,7 @@ def main(cfg: DictConfig):
     task = cfg.dataset.task
     training_mode = cfg.model.training_mode
     os.environ['CDIR'] = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/')
+    default_config_dir = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/task_defaults/')
 
     # assign engine
     if training_mode in ['linear_probe','knn']:
@@ -49,7 +50,6 @@ def main(cfg: DictConfig):
         engine = 'lightning'
 
     # engine specific input handling
-    default_config_dir = os.path.join(os.environ['REPO_PATH'], 'geofm_src/configs/task_defaults/')
     if engine == 'accelerated':
         defaults = OmegaConf.load(os.path.join(default_config_dir, 'linear_probe_accel.yaml'))
         cfg = OmegaConf.merge(defaults, cfg)
@@ -81,6 +81,14 @@ def main(cfg: DictConfig):
         if cfg.lr == -1:
             cfg.lr = cfg.base_lr * cfg.num_gpus
 
+    # get metrics
+    task_kwargs = OmegaConf.load(os.path.join(default_config_dir, 'metrics_and_criterion.yaml'))
+    key = task
+    if cfg.dataset.multilabel:
+        key = f'multilabel_{key}'
+    cfg.task_kwargs = task_kwargs[key]
+
+
     # setup output dir
     experiment_name = os.path.relpath(cfg.output_dir, os.environ['ODIR'])
     if cfg.add_defining_args:
@@ -109,9 +117,8 @@ def main(cfg: DictConfig):
 
     seed_everything(cfg.seed)
 
-
-
     # print & save config
+    cfg = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
     OmegaConf.save(cfg, os.path.join(cfg.output_dir, "config.yaml"))
     print(OmegaConf.to_yaml(cfg))
@@ -153,12 +160,12 @@ def main(cfg: DictConfig):
 
 
         # Callbacks
-        model_monitor = "val_miou" if task == "segmentation" else "val_acc1"
+        monitor = cfg.task_kwargs.ckpt_monitor
         callbacks = [
             ModelCheckpoint(
                 dirpath=os.path.join(cfg.output_dir, "checkpoints"),
                 filename="best_model-{epoch}",
-                monitor=model_monitor,
+                monitor=monitor,
                 mode="max",
                 save_last=True,
             ),
@@ -234,24 +241,6 @@ def main(cfg: DictConfig):
             learning_rates = cfg.lr,
         ))
 
-        print("CONFIG DATASET")
-        print(cfg.dataset)
-        if task == 'classification':
-            if cfg.dataset.multilabel:
-                logger.info('Multilabel classification')
-                criterion_cfg = {'id': 'MultiLabelSoftMarginLoss'}
-                val_metrics = [{'id': 'MultilabelAccuracy'}]
-            else:
-                logger.info('Multiclass classification')
-                criterion_cfg = {'id': 'CrossEntropyLoss'}
-                val_metrics = [{'id': 'MulticlassAccuracy'}]
-        elif task == 'regression':
-            logger.info('Regression')
-            criterion_cfg = {'id': 'MSELoss'}
-            val_metrics = [{'id': 'RMSE'}]
-        else:
-            raise NotImplementedError()
-
         results_list = run_eval_linear(
             model_wrapper,
             cfg.output_dir,
@@ -263,8 +252,8 @@ def main(cfg: DictConfig):
             heads_cfg,
             cfg.epochs,
             eval_period_epoch = cfg.trainer.check_val_every_n_epoch,
-            criterion_cfg = criterion_cfg,
-            val_metrics = val_metrics,
+            criterion_cfg = cfg.task_kwargs.criterion,
+            val_metrics = cfg.task_kwargs.val,
         )
 
         results = pd.DataFrame(results_list)

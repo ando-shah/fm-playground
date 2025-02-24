@@ -310,7 +310,8 @@ class ClsDataAugmentation(torch.nn.Module):
 
         flipH = K.RandomHorizontalFlip(p=0.5, keepdim=True)
         flipV = K.RandomVerticalFlip(p=0.5, keepdim=True)
-        crop = K.RandomResizedCrop(_to_tuple(size), scale=(0.8, 1.0), keepdim=True)
+        rcrop = K.RandomResizedCrop(_to_tuple(size), scale=(0.8, 1.0), keepdim=True)
+        r = K.Resize(_to_tuple(size), keepdim=True)
         self.output_chn_ids = None
         
         # setup HS specific augmentations
@@ -337,7 +338,7 @@ class ClsDataAugmentation(torch.nn.Module):
             else:
                 pass
             
-            self.transforms.extend([crop, flipH, flipV])
+            self.transforms.extend([rcrop, flipH, flipV])
         else:
             if band_ids is not None:
                 print(f'[ClsDataAugmentation: val/test] Sampling channels: {band_ids}')
@@ -348,7 +349,7 @@ class ClsDataAugmentation(torch.nn.Module):
             else:
                 pass
 
-            self.transforms.extend([crop])
+            self.transforms.append(r)
 
         self.transform = torch.nn.Sequential(*self.transforms)
 

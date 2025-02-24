@@ -18,10 +18,16 @@ class RegDataAugmentation(torch.nn.Module):
         mean = torch.Tensor([0.0])
         std = torch.Tensor([1.0])
 
+        if band_ids is not None:
+            if source_chn_ids is not None:
+                self.output_chn_ids = source_chn_ids[band_ids]
+            else:
+                raise ValueError("[ClsDataAugmentation] source_chn_ids must be provided if band_ids are provided")
+
         if split == "train":
             self.transform = torch.nn.Sequential(
                 K.Normalize(mean=mean, std=std),
-                K.Resize(size=size, align_corners=True),
+                K.RandomResizedCrop(size=size, scale=(0.8, 1.0)),
                 K.RandomHorizontalFlip(p=0.5),
                 K.RandomVerticalFlip(p=0.5),
             )
@@ -30,6 +36,8 @@ class RegDataAugmentation(torch.nn.Module):
                 K.Normalize(mean=mean, std=std),
                 K.Resize(size=size, align_corners=True),
             )
+
+        print(self.transform)
 
     def get_chn_ids(self):
         return self.output_chn_ids
@@ -57,8 +65,8 @@ class DigitalTyphoonDataset(BaseDataset):
 
     def create_dataset(self):
         """Create dataset splits for training, validation, and testing."""
-        train_transform = RegDataAugmentation(split="train", size=self.img_size, source_chn_ids=self.source_chn_ids)
-        eval_transform = RegDataAugmentation(split="test", size=self.img_size, source_chn_ids=self.source_chn_ids)
+        train_transform = RegDataAugmentation(split="train", size=self.img_size, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids)
+        eval_transform = RegDataAugmentation(split="test", size=self.img_size, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids)
 
         # Override the config with the transformed channel ids
         output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation

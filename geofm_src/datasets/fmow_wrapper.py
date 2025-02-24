@@ -232,7 +232,8 @@ class ClsDataAugmentation(torch.nn.Module):
 
         flipH = K.RandomHorizontalFlip(p=0.5, keepdim=True)
         flipV = K.RandomVerticalFlip(p=0.5, keepdim=True)
-        crop = K.RandomResizedCrop(_to_tuple(size), scale=(0.8, 1.0), keepdim=True)
+        rcrop = K.RandomResizedCrop(_to_tuple(size), scale=(0.8, 1.0), keepdim=True)
+        r = K.Resize(_to_tuple(size), keepdim=True)
         self.output_chn_ids = None
         
         # setup HS specific augmentations
@@ -260,7 +261,7 @@ class ClsDataAugmentation(torch.nn.Module):
             else:
                 pass
             
-            self.transforms.extend([crop, flipH, flipV])
+            self.transforms.extend([rcrop, flipH, flipV])
         else:
             if band_ids is not None:
                 print(f'[ClsDataAugmentation: val/test] Sampling channels: {band_ids}')
@@ -271,7 +272,7 @@ class ClsDataAugmentation(torch.nn.Module):
             else:
                 pass
 
-            self.transforms.extend([crop])
+            self.transforms.append(r)
 
         self.transform = torch.nn.Sequential(*self.transforms)
 
@@ -299,7 +300,6 @@ class FmowDataset(BaseDataset):
         output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
         if output_chn_ids is not None:
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
-            self.config['wavelengths_mean_microns'] = [x/1e3 for x in self.config['wavelengths_mean_nm']]
             self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 
         dataset_train = FmowBenchmarkDataset(

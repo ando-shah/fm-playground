@@ -39,7 +39,7 @@ class RegDataAugmentation(torch.nn.Module):
         if split == "train":
             self.transforms.extend([
                 K.Normalize(mean=mean, std=std),
-                K.Resize(size=size, align_corners=True),
+                K.RandomResizedCrop(size=size, scale=(0.8, 1.0)),
                 K.RandomHorizontalFlip(p=0.5),
                 K.RandomVerticalFlip(p=0.5),
             ])

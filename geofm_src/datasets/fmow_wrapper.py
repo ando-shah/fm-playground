@@ -48,15 +48,15 @@ class FmowBenchmarkDataset(NonGeoDataset):
 
     CLASS_NAMES = ["airport", "airport_hangar", "airport_terminal", "amusement_park", "aquaculture", "archaeological_site", "barn", "border_checkpoint", "burial_site", "car_dealership", "construction_site", "crop_field", "dam", "debris_or_rubble", "educational_institution", "electric_substation", "factory_or_powerplant", "fire_station", "flooded_road", "fountain", "gas_station", "golf_course", "ground_transportation_station", "helipad", "hospital", "impoverished_settlement", "interchange", "lake_or_pond", "lighthouse", "military_facility", "multi-unit_residential", "nuclear_powerplant", "office_building", "oil_or_gas_facility", "park", "parking_lot_or_garage", "place_of_worship", "police_station", "port", "prison", "race_track", "railway_bridge", "recreational_facility", "road_bridge", "runway", "shipyard", "shopping_mall", "single-unit_residential", "smokestack", "solar_farm", "space_facility", "stadium", "storage_tank", "surface_mine", "swimming_pool", "toll_booth", "tower", "tunnel_opening", "waste_disposal", "water_treatment_facility", "wind_farm", "zoo"]
     #It was found empirically that some wv2 or wv3 images are not 8 channels, so for simplicty we just drop them
-    PROBLEMATIC_IDS = { 'train' :[172, 3683, 4279, 4368, 5326, 5687, 6561, 6584, 6594, 7469, 7613, 7631, 7665, 7845, 8223, 8324, 11319, 11427, 12255, 13304, 18180, 19772, 19806, 20164, 20793, 20803, 21315, 21419, 21834, 21866, 22297, 22439, 22927, 23509, 23927, 24163, 25414, 25417, 26003, 26218, 26506, 26887, 27351, 28676, 28806, 29182, 29352, 29537, 32106, 32108, 34798, 35256, 37086, 37202, 38592, 39566, 39588, 40009, 40229, 40254, 41861, 46695, 47180, 50438, 55145, 55514, 56884, 57879, 65546, 66268, 66948, 76512, 76751, 76922, 77810, 83412, 84186, 86885, 86972, 87796, 87998, 88326, 88510, 89445, 89471, 90259, 92009, 92223, 92294, 93323, 94122, 94208, 94598, 94884, 95296, 96003, 96227, 98881, 99112, 99537, 100331, 100991, 101475, 101575, 101735, 101865, 101887, 102162, 102178, 102594, 102804, 104402, 104640, 104683, 104848, 104900, 105202, 105396, 106584, 107272, 107726, 108213, 108324, 108359, 109860, 110119, 110181, 110686, 111120, 111750, 112090, 113025, 113353, 113519, 114633, 115387, 116286, 116382, 116898, 117864, 117927, 118745, 119110, 119218, 119843, 120279, 
-                                120435, 120648, 120788, 120981, 121285, 121659, 121854, 123311, 124087, 124363, 124951, 125729, 128115, 129730, 129755, 129791, 131253, 131588, 131640, 132041, 132184, 133437, 134181, 135473, 136125, 136313, 136476, 137200, 137375, 137459, 138229, 139407, 139675, 140131, 140477, 140500, 140945, 141432, 141803, 142053, 142490, 142820, 143242, 143365, 144591, 145366, 149221, 151137, 151660, 151678, 152306, 153496, 156649, 156679, 160737, 163513, 164420, 164570, 164968, 165045, 165408, 166211, 166293, 166340, 166657, 182497, 182662, 183149, 184329, 185095, 185195, 189484, 192172, 192625, 193385, 194336, 196235, 197945, 198011, 198590, 200333, 203800, 203805, 211778, 211878, 212600, 215136, 215494, 215872, 215925, 216563, 218300, 219464, 221222, 222584, 222642, 224149, 225182, 226640, 227253, 229416, 230218, 231262, 231805, 232172, 232233, 232363, 241886, 242255, 243623, 246673, 248193, 249064, 250120, 251552, 251751, 251818, 252316, 252335, 252516, 252537, 252592, 252691, 252943, 253089, 253098, 253323, 254363, 255377, 255970, 255971, 256167, 
-                                256281, 256740, 257490, 257630, 258549, 258570, 260906, 262962, 263069, 266104, 266374, 266381, 266516, 267471, 268160, 270528, 271482, 272303, 272752, 272971, 273176, 274066, 274162, 274202, 274972,],
-                                'val': [1033, 1261, 1825, 2923, 2925, 2957, 2997, 3012, 3060, 3300, 3754, 5695, 8468, 9921, 11259, 13306, 14176, 14537, 14563, 14808, 15055, 15193, 15970, 16059, 16116, 16120, 16807, 17073, 17343, 18956, 19380, 19918, 20051, 20588, 23609, 23615, 27873, 30238, 31685, 32007, 32014, 32027, 32161, 35368, 35944, 36897, 37339, 37819, 38194]
-    }
-    # PROBLEMATIC_IDS = {'train': [172, 3683, 4279, 4368, 5326, 5687, 6561, 6584, 6594, 7469, 7613, 7631, 7665, 7845, 8223, 8324, 11319, 11427, 12255, 13304, 18180, 19772, 19806, 20164, 20793, 20803, 21315, 21419, 21834, 21866, 22297, 22439, 22927, 23509, 23927, 24163, 25414, 25417, 26003, 26218, 26506, 26887, 27351, 28676, 28806, 29182, 29352, 29537, 32106, 32108, 34798, 35256, 37086, 37202, 38592, 39566, 39588, 40009, 40229, 40254, 41861, 46695, 47180, 50438, 55145, 55514, 56884, 57879, 65546, 66268, 66948, 76512, 76751, 76922, 77810, 83412, 84186, 86885, 86972, 87796, 87998, 88326, 88510, 89445, 89471, 90259, 92009, 92223, 92294, 93323, 94122, 94208, 94598, 94884, 95296, 96003, 96227, 98881, 99112, 99537, 100331, 100991, 101475, 101575, 101735, 101865, 101887, 102162, 102178, 102594, 102804, 104402, 104640, 104683, 104848, 104900, 105202, 105396, 106584, 107272, 107726, 108213, 108324, 108359, 109860, 110119, 110181, 110686, 111120, 111750, 112090, 113025, 113353, 113519, 114633, 115387, 116286, 116382, 116898, 117864, 117927, 118745, 119110, 119218, 119843, 120279, 
-    #                              120435, 120648, 120788, 120981, 121285, 121659, 121854, 123311, 124087, 124363, 124951, 125729, 128115, 129730, 129755, 129791, 131253, 131588, 131640, 132041, 132184, 133437, 134181, 135473, 136125, 136313, 136476, 137200, 137375, 137459, 138229, 139407, 139675, 140131, 140477, 140500, 140945, 141432, 141803, 142053, 142490, 142820, 143242, 143365, 144591, 145366, 149221, 151137, 151660, 151678, 152306, 153496, 156649, 156679, 160737, 163513, 164420, 164570, 164968, 165045, 165408, 166211, 166293, 166340, 166657, 182497, 182662, 183149, 184329, 185095, 185195, 189484, 192172, 192625, 193385, 194336, 196235, 197945, 198011, 198590, 200333, 203800, 203805, 211778, 211878, 212600, 215136, 215494, 215872, 215925, 216563, 218300, 219464, 221222, 222584, 222642, 224149, 225182, 226640, 227253, 229416, 230218, 231262, 231805, 232172, 232233, 232363, 241886, 242255, 243623, 246673, 248193, 249064, 250120, 251552, 251751, 251818, 252316, 252335, 252516, 252537, 252592, 252691, 252943, 253089, 253098, 253323, 254363, 255377, 255970, 255971, 256167, 
-    #                              256281, 256740, 257490, 257630, 258549, 258570, 260906, 262962, 263069, 266104, 266374, 266381, 266516, 267471, 268160, 270528, 271482, 272303, 272752, 272971, 273176, 274066, 274162, 274202, 274972]}
-
+    PROBLEMATIC_IDS = { 'train' :
+                        {8: ['shipyard_10_7', 'water_treatment_facility_1468_0', 'water_treatment_facility_208_2', 'water_treatment_facility_1315_0', 'airport_65_0', 'airport_345_0', 'park_170_0', 'park_461_1', 'park_276_0', 'park_635_3', 'park_610_1', 'park_619_0', 'park_699_1', 'park_645_0', 'park_710_0', 'park_390_0', 'solar_farm_284_1', 'solar_farm_309_0', 'solar_farm_850_3', 'solar_farm_1678_0', 'tower_349_3', 'parking_lot_or_garage_741_4', 'parking_lot_or_garage_2025_0', 'parking_lot_or_garage_775_3', 'parking_lot_or_garage_1744_0', 'parking_lot_or_garage_667_5', 'parking_lot_or_garage_277_0', 'parking_lot_or_garage_836_4', 'parking_lot_or_garage_985_4', 'parking_lot_or_garage_129_0', 'parking_lot_or_garage_117_2', 'parking_lot_or_garage_1176_0', 'parking_lot_or_garage_1840_0', 'parking_lot_or_garage_992_0', 'parking_lot_or_garage_891_0', 'parking_lot_or_garage_398_4', 'parking_lot_or_garage_1958_0', 'parking_lot_or_garage_1356_0', 'parking_lot_or_garage_1164_0', 'parking_lot_or_garage_993_0', 'parking_lot_or_garage_407_0', 'parking_lot_or_garage_1104_0', 'parking_lot_or_garage_325_4', 'parking_lot_or_garage_101_4', 'parking_lot_or_garage_2606_6', 'parking_lot_or_garage_1339_4', 'parking_lot_or_garage_435_4', 'parking_lot_or_garage_629_2', 'multi-unit_residential_625_1', 'multi-unit_residential_625_0', 'multi-unit_residential_559_1', 'road_bridge_718_0', 'road_bridge_89_0', 'road_bridge_580_1', 'road_bridge_464_0', 'helipad_215_4', 'helipad_930_0', 'helipad_675_0', 'helipad_696_0', 'helipad_300_4', 'helipad_96_5', 'runway_370_1', 'runway_214_0', 'crop_field_1500_1', 'crop_field_1766_2', 'crop_field_271_3', 'crop_field_288_3', 'crop_field_1730_3', 'crop_field_1255_4', 'crop_field_2765_3', 'crop_field_1717_3', 'airport_terminal_971_0', 'airport_terminal_904_0', 'airport_terminal_751_0', 'airport_terminal_318_0', 'swimming_pool_893_4', 'ground_transportation_station_1244_0', 'ground_transportation_station_1083_12', 'ground_transportation_station_67_13', 'ground_transportation_station_259_16', 'ground_transportation_station_1514_0', 'ground_transportation_station_185_1', 'ground_transportation_station_474_3', 'ground_transportation_station_1330_0', 'ground_transportation_station_996_12', 'ground_transportation_station_776_7', 'ground_transportation_station_1212_20', 'interchange_134_18', 'interchange_322_0', 'interchange_346_4', 'interchange_173_0', 'interchange_399_0', 'interchange_277_13', 'interchange_220_4', 'police_station_967_0', 'police_station_721_1', 'police_station_1010_0', 'zoo_27_0', 'zoo_244_0', 'zoo_161_0', 'recreational_facility_3292_5', 'recreational_facility_659_4', 'recreational_facility_871_3', 'recreational_facility_1377_0', 'recreational_facility_4607_0', 'recreational_facility_2455_2', 'recreational_facility_2134_0', 'recreational_facility_4175_0', 'recreational_facility_4100_1', 'recreational_facility_1569_2', 'recreational_facility_4466_0', 'recreational_facility_542_0', 'recreational_facility_4294_0', 'recreational_facility_2046_3', 'recreational_facility_3827_0', 'recreational_facility_3332_0', 'recreational_facility_4693_0', 'recreational_facility_2824_0', 'recreational_facility_1358_0', 'recreational_facility_4709_0', 'recreational_facility_1087_0', 'recreational_facility_3285_4', 'recreational_facility_531_3', 'recreational_facility_2120_0', 'recreational_facility_3764_0', 'recreational_facility_979_0', 'recreational_facility_3982_0', 'recreational_facility_4275_0', 'recreational_facility_2308_4', 'recreational_facility_2313_0', 'recreational_facility_2538_8', 'recreational_facility_2375_0', 'recreational_facility_3967_1', 'recreational_facility_1870_0', 'recreational_facility_194_0', 'recreational_facility_1291_0', 'recreational_facility_1411_0', 'recreational_facility_3319_0', 'recreational_facility_3815_0', 'recreational_facility_1670_0', 'recreational_facility_1299_0', 'recreational_facility_3230_0', 'recreational_facility_4552_0', 'recreational_facility_2966_0', 'recreational_facility_579_0', 'recreational_facility_4237_0', 'recreational_facility_3846_0', 'recreational_facility_1338_4', 'recreational_facility_261_2', 'recreational_facility_833_4', 'recreational_facility_1684_0', 'recreational_facility_3204_0', 'recreational_facility_4134_0', 'prison_100_2', 'prison_107_0', 'prison_13_0', 'prison_260_0', 'oil_or_gas_facility_883_0', 'oil_or_gas_facility_1445_0', 'railway_bridge_689_0', 'railway_bridge_681_0', 'railway_bridge_187_0', 'railway_bridge_140_0', 'railway_bridge_99_0', 'railway_bridge_509_12', 'railway_bridge_210_0', 'railway_bridge_783_0', 'smokestack_586_0', 'smokestack_140_5', 'smokestack_55_0', 'educational_institution_1210_0', 'educational_institution_1337_0', 'educational_institution_1837_0', 'educational_institution_1518_0', 'educational_institution_288_0', 'educational_institution_615_2', 'educational_institution_198_4', 'educational_institution_1708_0', 'educational_institution_294_5', 'educational_institution_315_0', 'educational_institution_1811_0', 'educational_institution_967_12', 'educational_institution_740_5', 'educational_institution_480_13', 'educational_institution_1769_1', 'educational_institution_368_1', 'educational_institution_1217_4', 'educational_institution_1449_0', 'educational_institution_1153_4', 'educational_institution_1350_1', 'educational_institution_1568_1', 'place_of_worship_3515_17', 'place_of_worship_2117_0', 'place_of_worship_3562_7', 'place_of_worship_2023_0', 'place_of_worship_837_0', 'place_of_worship_4644_0', 'place_of_worship_1513_0', 'place_of_worship_3532_0', 'place_of_worship_1432_2', 'lighthouse_101_4', 'stadium_634_0', 'stadium_503_0', 'stadium_555_0', 'stadium_112_0', 'stadium_274_0', 'stadium_355_4', 'stadium_518_4', 'stadium_150_0', 'stadium_452_4', 'flooded_road_421_3', 'gas_station_922_0', 'gas_station_960_0', 'gas_station_356_0', 'gas_station_798_0', 'gas_station_447_0', 'gas_station_1043_0', 'military_facility_390_2', 'military_facility_1590_0', 'military_facility_776_0', 'military_facility_1147_0', 'military_facility_995_0', 'military_facility_1395_0', 'military_facility_460_0', 'military_facility_502_0', 'military_facility_1124_0', 'debris_or_rubble_259_0', 'storage_tank_550_7', 'storage_tank_464_0', 'shopping_mall_346_4', 'shopping_mall_434_3', 'shopping_mall_158_0', 'shopping_mall_843_0', 'shopping_mall_129_4', 'electric_substation_943_2', 'electric_substation_800_0', 'electric_substation_960_0', 'electric_substation_183_1', 'electric_substation_244_3', 'airport_hangar_299_4', 'airport_hangar_806_0', 'airport_hangar_22_0', 'amusement_park_1057_0', 'amusement_park_1127_0', 'amusement_park_294_5', 'amusement_park_399_0', 'burial_site_322_0', 'burial_site_998_0', 'burial_site_252_4', 'burial_site_475_5', 'burial_site_937_0', 'burial_site_26_5', 'burial_site_74_5', 'waste_disposal_598_0', 'waste_disposal_805_0', 'waste_disposal_848_0', 'toll_booth_602_0', 'toll_booth_1133_0', 'toll_booth_1027_0', 'construction_site_478_0', 'golf_course_70_1', 'golf_course_75_5', 'golf_course_268_0', 'golf_course_7_5', 'golf_course_638_0', 'golf_course_28_13', 'golf_course_554_0', 'golf_course_265_0', 'golf_course_365_2', 'golf_course_65_0', 'golf_course_207_2', 'golf_course_487_0', 'golf_course_148_2', 'golf_course_52_1', 'hospital_632_0', 'hospital_49_0', 'hospital_429_0', 'hospital_84_0', 'hospital_982_0', 'hospital_426_0', 'hospital_303_0', 'hospital_209_16', 'car_dealership_1222_0', 'car_dealership_242_1', 'car_dealership_729_0', 'car_dealership_297_2', 'car_dealership_1179_0', 'office_building_547_0', 'office_building_676_0', 'office_building_961_0', 'office_building_108_0', 'office_building_157_0', 'surface_mine_711_0', 'surface_mine_1107_0', 'surface_mine_1450_0', 'race_track_1028_0', 'race_track_523_0', 'race_track_72_0', 'race_track_650_0', 'race_track_943_0', 'race_track_581_0', 'race_track_524_0', 'race_track_789_0']},
+                        'val': 
+                        {8: ['park_102_1', 'park_8_3', 'solar_farm_96_1', 'parking_lot_or_garage_139_1', 'parking_lot_or_garage_203_0', 'parking_lot_or_garage_43_2', 'parking_lot_or_garage_129_0', 'parking_lot_or_garage_160_0', 'parking_lot_or_garage_97_0', 'parking_lot_or_garage_191_0', 'parking_lot_or_garage_159_0', 'helipad_126_0', 'crop_field_395_0', 'crop_field_38_0', 'airport_terminal_124_1', 'interchange_65_0', 'police_station_111_0', 'recreational_facility_589_0', 'recreational_facility_271_0', 'recreational_facility_92_0', 'recreational_facility_384_0', 'recreational_facility_599_0', 'recreational_facility_231_3', 'recreational_facility_360_1', 'recreational_facility_466_4', 'recreational_facility_0_0', 'recreational_facility_116_0', 'recreational_facility_269_0', 'recreational_facility_614_0', 'railway_bridge_16_14', 'smokestack_11_0', 'educational_institution_100_0', 'educational_institution_207_0', 'educational_institution_221_0', 'stadium_0_19', 'stadium_0_18', 'military_facility_45_0', 'fountain_52_0', 'electric_substation_73_0', 'electric_substation_100_1', 'electric_substation_128_5', 'electric_substation_105_5', 'electric_substation_116_0', 'waste_disposal_60_0', 'toll_booth_115_0', 'golf_course_48_0', 'hospital_68_0', 'car_dealership_166_0', 'car_dealership_112_1']},
+                        'test': 
+                        {8: ['water_treatment_facility_2_0', 'park_53_0', 'tower_179_0', 'parking_lot_or_garage_72_0', 'parking_lot_or_garage_14_3', 'parking_lot_or_garage_226_1', 'road_bridge_86_0', 'helipad_84_0', 'border_checkpoint_9_6', 'airport_terminal_75_0', 'ground_transportation_station_212_15', 'ground_transportation_station_21_1', 'interchange_67_0', 'recreational_facility_314_0', 'recreational_facility_325_2', 'recreational_facility_293_0', 'prison_54_4', 'educational_institution_189_1', 'educational_institution_39_1', 'educational_institution_248_0', 'place_of_worship_53_0', 'gas_station_156_0', 'electric_substation_157_1', 'waste_disposal_6_0', 'waste_disposal_129_0', 'waste_disposal_88_0', 'toll_booth_129_0', 'golf_course_8_0', 'golf_course_76_3', 'hospital_102_2', 'office_building_138_0', 'office_building_36_0', 'office_building_29_0', 'race_track_121_0']},
+                        
+                        }
+    
     def __init__(self, split='train', 
                  normalize=True, 
                  root='${RDIR}/datasets',
@@ -66,7 +66,8 @@ class FmowBenchmarkDataset(NonGeoDataset):
                  full_spectra=False,
                  output_dtype='float32',
                  min_img_size:int = None,
-                 max_img_size:int = None,):
+                 max_img_size:int = None,
+                 num_channels:int = 4):
         """
 
         split: str, one of ['train', 'val', 'test']
@@ -82,6 +83,7 @@ class FmowBenchmarkDataset(NonGeoDataset):
         self.transforms = transforms
         self.return_rgb = return_rgb
         self.num_classes = len(self.CLASS_NAMES)
+        self.num_channels = num_channels
 
         assert isinstance(output_dtype, str)
         if output_dtype == 'float16':
@@ -117,6 +119,13 @@ class FmowBenchmarkDataset(NonGeoDataset):
         self.max_img_size = max_img_size
         self.keep_sensors = keep_sensors
         self.split = split
+        if not self.return_rgb:
+            self.df = self.df[self.df['ms_sensor_platform_name'].isin(self.keep_sensors)]
+        else:
+            self.df = self.df[self.df['rgb_sensor_platform_name'].isin(self.keep_sensors)]
+            #filter out all rows where rgb_is_corrupt is True
+            # self.df = self.df[self.df['rgb_is_corrupt'] == False]
+            logger.info(f'RGB Mode')
         self._subset_df()
 
         self.log_stats()
@@ -127,21 +136,17 @@ class FmowBenchmarkDataset(NonGeoDataset):
             self.channelwise_transforms = self._build_ch_transforms()
 
     def _subset_df(self):
-
-        if not self.return_rgb:
-            self.df = self.df[self.df['ms_sensor_platform_name'].isin(self.keep_sensors)]
-        else:
-            self.df = self.df[self.df['rgb_sensor_platform_name'].isin(self.keep_sensors)]
-            #filter out all rows where rgb_is_corrupt is True
-            # self.df = self.df[self.df['rgb_is_corrupt'] == False]
-
-        #remove row in PROBLEMATIC_IDS
+        # remove row in PROBLEMATIC_IDS
         if self.split in self.PROBLEMATIC_IDS:
-            problematic_ids = self.PROBLEMATIC_IDS[self.split]
-            self.df = self.df[~self.df.index.isin(problematic_ids)]
-            logger.info(f'Removed {len(problematic_ids)} problematic images for {self.split} split')
-            # print(f'Removed {len(problematic_ids)} problematic images for {self.split} split')
-
+            # Get problematic IDs only for matching split and channel count
+            pids = self.PROBLEMATIC_IDS[self.split].get(self.num_channels, [])
+            print(f'problematic_ids for {self.num_channels} channels: {pids}')
+            
+            if len(pids) > 0:
+                len_before = len(self.df)
+                self.df = self.df[~self.df['id'].isin(pids)]
+                len_after = len(self.df)
+                logger.info(f'Removed {len_before - len_after} problematic images for {self.split} split with {self.num_channels} channels')
         self.df = self.df.reset_index(drop=True)
 
 
@@ -198,7 +203,7 @@ class FmowBenchmarkDataset(NonGeoDataset):
             #         f.write('time: ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n')
             #         f.write('file: ' + faulty_path + '\n')
             #         f.write(full_traceback)
-            self.problematic_ids.append(idx)
+            self.problematic_ids.append(row['id'])
             return None, None
         chn_id = self.chn_ids[ds_name]
 
@@ -206,8 +211,9 @@ class FmowBenchmarkDataset(NonGeoDataset):
         label = self._get_label(label_id)
 
         if (img.shape[0] == 8 and sensor != 'fmow_wv23') or (img.shape[0] == 4 and sensor != 'fmow_qbge'):
-            print(f"Mismatching channel size: {idx},{self.split} : {img.shape}, {sensor}")
-            self.problematic_ids.append(idx)
+            self.problematic_ids.append(row['id'])
+            print(f"[{idx}] Mismatching channel size for {self.split} : {img.shape}, {sensor} | Ids : {len(self.problematic_ids)}")
+            
     
         if self.normalize:
             img = self.channelwise_transforms[sensor](img)
@@ -242,6 +248,7 @@ class ClsDataAugmentation(torch.nn.Module):
         else:
             self.output_chn_ids = source_chn_ids
 
+        
         self.transforms = []
         if split == "train":
             if band_ids is not None:
@@ -279,6 +286,8 @@ class ClsDataAugmentation(torch.nn.Module):
 class FmowDataset(BaseDataset):
     def __init__(self, config):
         super().__init__(config)
+        self.return_rgb = config.get('return_rgb', False)
+        self.num_channels = config.get('num_channels', 4)
 
     
     def create_dataset(self):
@@ -292,16 +301,15 @@ class FmowDataset(BaseDataset):
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
             self.config['wavelengths_mean_microns'] = [x/1e3 for x in self.config['wavelengths_mean_nm']]
             self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
-               
-               
+
         dataset_train = FmowBenchmarkDataset(
-            root=self.root_dir, split="train", transforms=train_transform, keep_sensors=self.keep_sensors
+            root=self.root_dir, split="train", transforms=train_transform, keep_sensors=self.keep_sensors, return_rgb=self.return_rgb, num_channels=self.num_channels, normalize=True
         )
         dataset_val = FmowBenchmarkDataset(
-            root=self.root_dir, split="val", transforms=eval_transform, keep_sensors=self.keep_sensors
+            root=self.root_dir, split="val", transforms=eval_transform, keep_sensors=self.keep_sensors, return_rgb=self.return_rgb, num_channels=self.num_channels, normalize=True
         )
         dataset_test = FmowBenchmarkDataset(
-            root=self.root_dir, split="test", transforms=eval_transform, keep_sensors=self.keep_sensors
+            root=self.root_dir, split="test", transforms=eval_transform, keep_sensors=self.keep_sensors, return_rgb=self.return_rgb, num_channels=self.num_channels, normalize=True
         )
 
         return dataset_train, dataset_val, dataset_test

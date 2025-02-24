@@ -1,0 +1,20 @@
+defaults:
+  - benv2_all
+
+bands: s2
+dataset_name: benv2_s2
+band_ids: [3, 2, 1, 7] #RGB, NIR
+num_channels: 4
+senpamae_channels: #senpamae SRF has only 10 channels (S2-10/20m), so indexes below are relative to that list
+  - 2
+  - 0
+  - 1
+  - 6
+
+senpamae_srf_name: rfs_sentinel2_a.npy
+#above:
+# mapping RGB,NIR -> S2-10/20m
+# B4 -> B4 [2] (red)
+# B3 -> B3 [0] (green)
+# B2 -> B2 [1] (blue)
+# B8 -> B8 [6] (NIR)

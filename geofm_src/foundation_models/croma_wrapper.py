@@ -67,7 +67,7 @@ class CromaWrapper(EvalModelWrapper):
 
     def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
         """Pass through the output of get_blocks."""
-        return self.get_blocks(x)
+        return self.encoder(**{f"{self.model_config.modality}_images": x})['out_feats']
     
     def replace_pe(self, num_channels):
         mod = self.model_config.modality

@@ -52,8 +52,22 @@ class AnySatWrapper(EvalModelWrapper):
                 x = x.unsqueeze(1)
                 dates = torch.arange(x.shape[1]).float()
 
+            case "l7":
+                assert x.shape[1] == 6, "Input tensor for l7 should have 6 channels"
+                # unsqueeze time dimension
+                x = x.unsqueeze(1)
+                dates = torch.arange(x.shape[1]).float()
+
             case "spot":
                 assert x.shape[1] == 3, "Input tensor for spot should have 3 channels"
+                dates = None
+
+            case "naip":
+                assert x.shape[1] == 4, "Input tensor for naip should have 4 channels"
+                dates = None
+
+            case 'aerial':
+                assert x.shape[1] == 4, "Input tensor for aerial should have 4 channels"
                 dates = None
 
         anysat_input = {input_key: x}

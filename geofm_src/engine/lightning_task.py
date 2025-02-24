@@ -240,7 +240,6 @@ class LightningSegmentationTask(LightningTask):
         super().__init__(args, model_config, data_config)
         assert MMSEGM_AVAIL, "MMSEG needs to be installed"
         self.embed_dim = model_config.embed_dim
-        self.criterion = nn.CrossEntropyLoss()
 
     def _build_default_segm_modules(self):
         edim = self.embed_dim

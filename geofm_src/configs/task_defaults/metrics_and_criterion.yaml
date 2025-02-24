@@ -48,4 +48,10 @@ regression:
   - id: RMSE
 
 
-segmentation: []
+segmentation: 
+
+  criterion:
+    id: CrossEntropyLoss
+
+  train: []
+  val: []

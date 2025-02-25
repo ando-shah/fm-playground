@@ -6,6 +6,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.loggers import MLFlowLogger, WandbLogger
 from lightning import Trainer
 from lightning.pytorch.strategies import DDPStrategy
+import torch
 from datasets.data_module import BenchmarkDataModule
 from lightning.pytorch import seed_everything
 from factory import create_model
@@ -16,6 +17,7 @@ import pandas as pd
 from geofm_src.engine.accelerated.utils.logger import setup_logger, plot_curves
 
 from geofm_src.engine.accelerated.linear import run_eval_linear
+from geofm_src.engine.accelerated.knn import eval_knn_with_model
 from geofm_src.engine.lightning_task import LightningClsRegTask, LightningSegmentationTask
 import logging
 import json
@@ -52,17 +54,27 @@ def main(cfg: DictConfig):
 
     # engine specific input handling
     if engine == 'accelerated':
-        defaults = OmegaConf.load(os.path.join(default_config_dir, 'linear_probe_accel.yaml'))
+        if training_mode == 'linear_probe':
+            f = 'linear_probe_accel.yaml'
+        else:
+            f = 'knn_accel.yaml'
+        defaults = OmegaConf.load(os.path.join(default_config_dir, f))
         cfg = OmegaConf.merge(defaults, cfg)
 
-        assert OmegaConf.is_list(cfg.lr), 'lr should be a list for accelerated engine'
-        assert training_mode != 'knn', 'not impolemented yet'
+        if training_mode == 'linear_probe':
+            assert OmegaConf.is_list(cfg.lr), 'lr should be a list for accelerated engine'
+            args_defining_run = {
+                "batch_size": "bsz",
+                "epochs": "e",
+            }
+        else:
+            args_defining_run = {
+                'nb_knn': 'k',
+                'temperature_list': 'T',
+                'normmode_list': 'norm',
+            }
         assert cfg.num_gpus == 1, 'accelerated only supports single gpu for now'
 
-        args_defining_run = {
-            "batch_size": "bsz",
-            "epochs": "e",
-        }
 
     elif engine == 'lightning':
         defaults = OmegaConf.load(os.path.join(default_config_dir, 'lightning.yaml'))
@@ -230,97 +242,115 @@ def main(cfg: DictConfig):
         data_module.setup()
         setup_logger('eval', to_sysout=True, filename=os.path.join(cfg.output_dir, 'log.txt'))
         logger = logging.getLogger("eval")
-        model_wrapper.load_encoder(cfg.model.accel_cls_blk_indices)
 
         dl_cfg = OmegaConf.create(dict(
             batch_size=cfg.batch_size,
             num_workers=cfg.num_workers,
         ))
 
-        heads_cfg = OmegaConf.create(dict(
-            n_last_blocks_list = cfg.n_last_blocks_list,
-            pooling = cfg.pooling,
-            learning_rates = cfg.lr,
-        ))
+        if training_mode == 'linear_probe':
+            model_wrapper.load_encoder(cfg.model.accel_cls_blk_indices)
 
-        results_list = run_eval_linear(
-            model_wrapper,
-            cfg.output_dir,
-            data_module.dataset_train,
-            data_module.dataset_val,
-            [data_module.dataset_test],
-            cfg.dataset.num_classes,
-            dl_cfg,
-            heads_cfg,
-            cfg.epochs,
-            eval_period_epoch = cfg.trainer.check_val_every_n_epoch,
-            criterion_cfg = cfg.task_kwargs.criterion,
-            val_metrics = cfg.task_kwargs.val,
-        )
+            heads_cfg = OmegaConf.create(dict(
+                n_last_blocks_list = cfg.n_last_blocks_list,
+                pooling = cfg.pooling,
+                learning_rates = cfg.lr,
+            ))
 
-        results = pd.DataFrame(results_list)
-        results = results[['metric_str','val','best_classifier']]
-        results.rename(columns={'metric_str':'metric'}, inplace=True)
-        results.reset_index(drop=True, inplace=True)
-        print(f'Results: \n\n{results.to_string()}\n')
+            results_list = run_eval_linear(
+                model_wrapper,
+                cfg.output_dir,
+                data_module.dataset_train,
+                data_module.dataset_val,
+                [data_module.dataset_test],
+                cfg.dataset.num_classes,
+                dl_cfg,
+                heads_cfg,
+                cfg.epochs,
+                eval_period_epoch = cfg.trainer.check_val_every_n_epoch,
+                criterion_cfg = cfg.task_kwargs.criterion,
+                val_metrics = cfg.task_kwargs.val,
+            )
 
+            # process loss file
+            loss_file = os.path.join(cfg.output_dir, 'linear_probe_all_losses.csv')
+            losses = pd.read_csv(loss_file).reset_index(drop=True)
+            classifiers = losses.columns[1:]
 
-        # logging
+            # process metrics file
+            metrics_file = os.path.join(cfg.output_dir, 'linear_probe_all_metrics.json')
+            metrics_by_cls = {}
+            with open(metrics_file, 'r') as f:
+                lines = f.readlines()
+            for l in lines:
+                d = json.loads(l)
+                cls = d['classifier']
+                if cls not in metrics_by_cls:
+                    metrics_by_cls[cls] = {}
+                if 'test' in d['prefix']:
+                    key = d['prefix']
+                else:
+                    key = d['iteration']
+                metrics_by_cls[cls][key] = {k:v for k,v in d.items() if k not in ['prefix','iteration','classifier']}
 
-        # process loss file
-        loss_file = os.path.join(cfg.output_dir, 'linear_probe_all_losses.csv')
-        losses = pd.read_csv(loss_file).reset_index(drop=True)
-        classifiers = losses.columns[1:]
+            if cfg.logger == 'mlflow':
+                logger.info('Logging to mlflow')
+                import mlflow
+                mlflow.set_tracking_uri(f"file:{os.path.join(os.environ['ODIR'], '_mlruns')}")
+                mlflow.set_experiment(os.path.join(experiment_name, run_name))
+                for cls in classifiers:
+                    with mlflow.start_run(run_name=cls):
+                        # example: classifier_blocks_4_pooling_default_lr_2_50000
+                        params = dict(
+                            blocks = cls.split('_')[2],
+                            pooling = cls.split('_')[4],
+                            lr = float('.'.join(cls.split('_')[-2:])) ,)
+                        mlflow.log_params(params)
 
-        # process metrics file
-        metrics_file = os.path.join(cfg.output_dir, 'linear_probe_all_metrics.json')
-        metrics_by_cls = {}
-        with open(metrics_file, 'r') as f:
-            lines = f.readlines()
-        for l in lines:
-            d = json.loads(l)
-            cls = d['classifier']
-            if cls not in metrics_by_cls:
-                metrics_by_cls[cls] = {}
-            if 'test' in d['prefix']:
-                key = d['prefix']
+                        for i in range(losses.shape[0]):
+                            mlflow.log_metric(f'loss', losses.at[i,cls], step=losses.at[i, 'iteration'])
+
+                        for i, metrics in metrics_by_cls[cls].items():
+                            if isinstance(i, int):
+                                for name, val in metrics.items():
+                                    mlflow.log_metric(f'val/{name}', val, step=int(i))
+                            else:
+                                for name, val in metrics.items():
+                                    mlflow.log_metric(f'{i}/{name}', val)
+                    
             else:
-                key = d['iteration']
-            metrics_by_cls[cls][key] = {k:v for k,v in d.items() if k not in ['prefix','iteration','classifier']}
+                raise NotImplementedError()
+            
+            plot_curves(cfg.output_dir) # plot average curve into .png file
 
-        if cfg.logger == 'mlflow':
-            logger.info('Logging to mlflow')
-            import mlflow
-            mlflow.set_tracking_uri(f"file:{os.path.join(os.environ['ODIR'], '_mlruns')}")
-            mlflow.set_experiment(os.path.join(experiment_name, run_name))
-            for cls in classifiers:
-                with mlflow.start_run(run_name=cls):
-                    # example: classifier_blocks_4_pooling_default_lr_2_50000
-                    params = dict(
-                        blocks = cls.split('_')[2],
-                        pooling = cls.split('_')[4],
-                        lr = float('.'.join(cls.split('_')[-2:])) ,)
-                    mlflow.log_params(params)
-
-                    for i in range(losses.shape[0]):
-                        mlflow.log_metric(f'loss', losses.at[i,cls], step=losses.at[i, 'iteration'])
-
-                    for i, metrics in metrics_by_cls[cls].items():
-                        if isinstance(i, int):
-                            for name, val in metrics.items():
-                                mlflow.log_metric(f'val/{name}', val, step=int(i))
-                        else:
-                            for name, val in metrics.items():
-                                mlflow.log_metric(f'{i}/{name}', val)
-                
-        else:
-            raise NotImplementedError()
         
-        plot_curves(cfg.output_dir) # plot average curve into .png file
+        elif training_mode == 'knn':
+            model_wrapper.load_encoder(cfg.model.default_cls_blk_indices)
+
+            results_list = eval_knn_with_model(
+                model_wrapper,
+                cfg.output_dir,
+                data_module.dataset_train,
+                data_module.dataset_test,
+                nb_knn = cfg.nb_knn,
+                normmode_list = cfg.normmode_list,
+                temperature_list = cfg.temperature_list,
+                autocast_dtype = torch.bfloat16,
+                metric_cfg = cfg.task_kwargs.val,
+                dl_cfg = dl_cfg,
+                num_classes = cfg.dataset.num_classes,)
+
+        else :
+            raise ValueError(f'Unknown training_mode: {training_mode}')
     else:
         raise ValueError(f'Unknown engine: {engine}')
 
     # save results
+    results = pd.DataFrame(results_list)
+    results = results[['metric_str','val','best_classifier']]
+    results.rename(columns={'metric_str':'metric'}, inplace=True)
+    results.reset_index(drop=True, inplace=True)
+    print(f'Results: \n\n{results.to_string()}\n')
     results.to_csv(os.path.join(cfg.output_dir, "results.csv"), index=False)
 
 

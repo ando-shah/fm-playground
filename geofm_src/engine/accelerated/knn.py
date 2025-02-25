@@ -2,98 +2,27 @@
 #
 # This source code is licensed under the Apache License, Version 2.0
 # found in the LICENSE file in the root directory of this source tree.
+#
+# adjusted from https://github.com/facebookresearch/dinov2/blob/main/dinov2/eval/knn.py
 
-import argparse
+
 from functools import partial
 import json
 import logging
 import os
-import sys
 from typing import List, Optional
 
 import torch
 from torch.nn.functional import one_hot, softmax
 
-import dinov2.distributed as distributed
-from dinov2.data import SamplerType, make_data_loader, make_dataset
-from dinov2.data.transforms import make_classification_eval_transform
-from dinov2.eval.metrics import AccuracyAveraging, build_topk_accuracy_metric
-from dinov2.eval.setup import get_args_parser as get_setup_args_parser
-from dinov2.eval.setup import setup_and_build_model
-from dinov2.eval.utils import ModelWithNormalize, evaluate, extract_features
-
+from .utils import distributed
+from .utils.data import SamplerType, make_data_loader
+from .utils.metrics import build_metric
+from .utils.utils import evaluate, extract_features
+import torch.distributed as dist
+from geofm_src.engine.model import EvalModelWrapper
 
 logger = logging.getLogger("dinov2")
-
-
-def get_args_parser(
-    description: Optional[str] = None,
-    parents: Optional[List[argparse.ArgumentParser]] = None,
-    add_help: bool = True,
-):
-    parents = parents or []
-    setup_args_parser = get_setup_args_parser(parents=parents, add_help=False)
-    parents = [setup_args_parser]
-    parser = argparse.ArgumentParser(
-        description=description,
-        parents=parents,
-        add_help=add_help,
-    )
-    parser.add_argument(
-        "--train-dataset",
-        dest="train_dataset_str",
-        type=str,
-        help="Training dataset",
-    )
-    parser.add_argument(
-        "--val-dataset",
-        dest="val_dataset_str",
-        type=str,
-        help="Validation dataset",
-    )
-    parser.add_argument(
-        "--nb_knn",
-        nargs="+",
-        type=int,
-        help="Number of NN to use. 20 is usually working the best.",
-    )
-    parser.add_argument(
-        "--temperature",
-        type=float,
-        help="Temperature used in the voting coefficient",
-    )
-    parser.add_argument(
-        "--gather-on-cpu",
-        action="store_true",
-        help="Whether to gather the train features on cpu, slower"
-        "but useful to avoid OOM for large datasets (e.g. ImageNet22k).",
-    )
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        help="Batch size.",
-    )
-    parser.add_argument(
-        "--n-per-class-list",
-        nargs="+",
-        type=int,
-        help="Number to take per class",
-    )
-    parser.add_argument(
-        "--n-tries",
-        type=int,
-        help="Number of tries",
-    )
-    parser.set_defaults(
-        train_dataset_str="ImageNet:split=TRAIN",
-        val_dataset_str="ImageNet:split=VAL",
-        nb_knn=[10, 20, 100, 200],
-        temperature=0.07,
-        batch_size=256,
-        n_per_class_list=[-1],
-        n_tries=1,
-    )
-    return parser
 
 
 class KnnModule(torch.nn.Module):
@@ -106,13 +35,31 @@ class KnnModule(torch.nn.Module):
     then collated back on the original device.
     """
 
-    def __init__(self, train_features, train_labels, nb_knn, T, device, num_classes=1000):
+    def __init__(self, train_features: torch.Tensor, train_labels, nb_knn, T, device, num_classes=1000, normmode=False, batch_size=-1):
         super().__init__()
 
-        self.global_rank = distributed.get_global_rank()
-        self.global_size = distributed.get_global_size()
+        self.use_dist = distributed.is_enabled()
+        if self.use_dist:
+            self.global_rank = distributed.get_global_rank()
+            self.global_size = distributed.get_global_size()
+        else:
+            self.global_rank = 0
+            self.global_size = 1
 
         self.device = device
+        self.batch_size = batch_size
+        self.norm_mode = normmode
+        if self.norm_mode == 'all':
+            self.mean = train_features.mean(0)
+            self.std = train_features.std(0)
+            train_features = (train_features - self.mean) / self.std
+        elif self.norm_mode == 'batchwise':
+            train_features = self._batchwise_norm(train_features)
+        elif self.norm_mode == 'none':
+            pass
+        else:
+            raise ValueError(f'Unknown normalization mode: {self.norm_mode}')
+
         self.train_features_rank_T = train_features.chunk(self.global_size)[self.global_rank].T.to(self.device)
         self.candidates = train_labels.chunk(self.global_size)[self.global_rank].view(1, -1).to(self.device)
 
@@ -129,12 +76,14 @@ class KnnModule(torch.nn.Module):
     def _similarity_for_rank(self, features_rank, source_rank):
         # Send the features from `source_rank` to all ranks
         broadcast_shape = torch.tensor(features_rank.shape).to(self.device)
-        torch.distributed.broadcast(broadcast_shape, source_rank)
+        if self.use_dist:
+            dist.broadcast(broadcast_shape, source_rank)
 
         broadcasted = features_rank
-        if self.global_rank != source_rank:
-            broadcasted = torch.zeros(*broadcast_shape, dtype=features_rank.dtype, device=self.device)
-        torch.distributed.broadcast(broadcasted, source_rank)
+        if self.use_dist:
+            if self.global_rank != source_rank:
+                broadcasted = torch.zeros(*broadcast_shape, dtype=features_rank.dtype, device=self.device)
+            dist.broadcast(broadcasted, source_rank)
 
         # Compute the neighbors for `source_rank` among `train_features_rank_T`
         similarity_rank = torch.mm(broadcasted, self.train_features_rank_T)
@@ -148,8 +97,12 @@ class KnnModule(torch.nn.Module):
             topk_sims_rank = [torch.zeros_like(topk_sims) for _ in range(self.global_size)]
             retrieved_rank = [torch.zeros_like(neighbors_labels) for _ in range(self.global_size)]
 
-        torch.distributed.gather(topk_sims, topk_sims_rank, dst=target_rank)
-        torch.distributed.gather(neighbors_labels, retrieved_rank, dst=target_rank)
+        if self.use_dist:
+            dist.gather(topk_sims, topk_sims_rank, dst=target_rank)
+            dist.gather(neighbors_labels, retrieved_rank, dst=target_rank)
+        else:
+            topk_sims_rank = [topk_sims]
+            retrieved_rank = [neighbors_labels]
 
         if self.global_rank == target_rank:
             # Perform a second top-k on the k * global_size retrieved neighbors
@@ -167,11 +120,32 @@ class KnnModule(torch.nn.Module):
                 topk_sims_rank, neighbors_labels_rank = results
         return topk_sims_rank, neighbors_labels_rank
 
-    def forward(self, features_rank):
+    def _batchwise_norm(self, features):
+        left_over = features.shape[0] % self.batch_size
+        if left_over > 0:
+            left_over_features = features[-left_over:]
+            left_over_features = torch.nn.functional.normalize(left_over_features, dim=1, p=2)
+            features = features[:-left_over]
+        features = features.unsqueeze(0).view(-1, self.batch_size, *features.shape[1:])
+        features = torch.nn.functional.normalize(features, dim=2, p=2)
+        features = features.flatten(0, 1)
+        if left_over > 0:
+            features = torch.cat([features, left_over_features], 0)
+        return features
+
+    def forward(self, features_rank: torch.Tensor):
         """
         Compute the results on all values of `self.nb_knn` neighbors from the full `self.max_k`
         """
         assert all(k <= self.max_k for k in self.nb_knn)
+
+        norm_mode = self.norm_mode
+        if norm_mode == 'all':
+            features_rank = (features_rank - self.mean) / self.std
+        elif norm_mode == 'batchwise':
+            features_rank = self._batchwise_norm(features_rank)
+        elif norm_mode == 'none':
+            pass
 
         topk_sims, neighbors_labels = self.compute_neighbors(features_rank)
         batch_size = neighbors_labels.shape[0]
@@ -195,29 +169,37 @@ class DictKeysModule(torch.nn.Module):
         return {"preds": features_dict, "target": targets}
 
 
-def create_module_dict(*, module, n_per_class_list, n_tries, nb_knn, train_features, train_labels):
+def create_module_dict(*, module, n_per_class_list, n_tries, nb_knn, train_features, train_labels, normmode_list=[True, False], temperature_list=[0.07], batch_size=-1):
     modules = {}
     mapping = create_class_indices_mapping(train_labels)
     for npc in n_per_class_list:
-        if npc < 0:  # Only one try needed when using the full data
-            full_module = module(
-                train_features=train_features,
-                train_labels=train_labels,
-                nb_knn=nb_knn,
-            )
-            modules["full"] = ModuleDictWithForward({"1": full_module})
-            continue
-        all_tries = {}
-        for t in range(n_tries):
-            final_indices = filter_train(mapping, npc, seed=t)
-            k_list = list(set(nb_knn + [npc]))
-            k_list = sorted([el for el in k_list if el <= npc])
-            all_tries[str(t)] = module(
-                train_features=train_features[final_indices],
-                train_labels=train_labels[final_indices],
-                nb_knn=k_list,
-            )
-        modules[f"{npc} per class"] = ModuleDictWithForward(all_tries)
+        for normmode in normmode_list:
+            for T in temperature_list:
+                if npc < 0:  # Only one try needed when using the full data
+                    full_module = module(
+                        train_features=train_features,
+                        train_labels=train_labels,
+                        nb_knn=nb_knn,
+                        normmode = normmode,
+                        T = T,
+                        batch_size = batch_size
+                    )
+                    modules[f"full_T={str(T).replace('.',',')}_normf={normmode}"] = ModuleDictWithForward({"1": full_module})
+                else:
+                    all_tries = {}
+                    for t in range(n_tries):
+                        final_indices = filter_train(mapping, npc, seed=t)
+                        k_list = list(set(nb_knn + [npc]))
+                        k_list = sorted([el for el in k_list if el <= npc])
+                        all_tries[str(t)] = module(
+                            train_features=train_features[final_indices],
+                            train_labels=train_labels[final_indices],
+                            nb_knn=k_list,
+                            normmode = normmode,
+                            T=T,
+                            batch_size = batch_size,
+                        )
+                    modules[f"npc={npc}_T={str(T).replace('.',',')}_normf={normmode}"] = ModuleDictWithForward(all_tries)
 
     return ModuleDictWithForward(modules)
 
@@ -242,41 +224,50 @@ class ModuleDictWithForward(torch.nn.ModuleDict):
         return {k: module(*args, **kwargs) for k, module in self._modules.items()}
 
 
+class KnnModelWrapper(torch.nn.Module):
+    def __init__(self, encoder: EvalModelWrapper):
+        super().__init__()
+        self.encoder = encoder
+
+    def forward(self, x):
+        x = self.encoder.get_blocks(x)
+        x = self.encoder.default_blocks_to_featurevec(x)
+        # x = torch.nn.functional.normalize(x, dim=1, p=2)
+        return x
+
+
 def eval_knn(
-    model,
+    model, # this already is a feature model
     train_dataset,
     val_dataset,
-    accuracy_averaging,
+    metric_cfg,
     nb_knn,
-    temperature,
-    batch_size,
-    num_workers,
+    temperature_list,
+    dl_cfg,
     gather_on_cpu,
     n_per_class_list=[-1],
     n_tries=1,
+    num_classes = -1, 
+    normmode_list = [False],
 ):
-    model = ModelWithNormalize(model)
 
     logger.info("Extracting features for train set...")
     train_features, train_labels = extract_features(
-        model, train_dataset, batch_size, num_workers, gather_on_cpu=gather_on_cpu
+        model, train_dataset, gather_on_cpu=gather_on_cpu, dl_cfg=dl_cfg
     )
-    logger.info(f"Train features created, shape {train_features.shape}.")
 
     val_dataloader = make_data_loader(
         dataset=val_dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        sampler_type=SamplerType.DISTRIBUTED,
-        drop_last=False,
+        sampler_type=SamplerType.EPOCH,
         shuffle=False,
-        persistent_workers=True,
+        **dl_cfg
     )
-    num_classes = train_labels.max() + 1
-    metric_collection = build_topk_accuracy_metric(accuracy_averaging, num_classes=num_classes)
+    metric_collection = build_metric(metric_cfg, num_classes=num_classes)
 
     device = torch.cuda.current_device()
-    partial_module = partial(KnnModule, T=temperature, device=device, num_classes=num_classes)
+    knnmodule = KnnModule
+    logger.info(f'Using knn module: {knnmodule} with num_classes {num_classes}')
+    partial_module = partial(knnmodule, device=device, num_classes=num_classes)
     knn_module_dict = create_module_dict(
         module=partial_module,
         n_per_class_list=n_per_class_list,
@@ -284,6 +275,9 @@ def eval_knn(
         nb_knn=nb_knn,
         train_features=train_features,
         train_labels=train_labels,
+        temperature_list = temperature_list,
+        normmode_list = normmode_list,
+        batch_size = dl_cfg.batch_size,
     )
     postprocessors, metrics = {}, {}
     for n_per_class, knn_module in knn_module_dict.items():
@@ -298,6 +292,7 @@ def eval_knn(
     # ============ evaluation ... ============
     logger.info("Start the k-NN classification.")
     _, results_dict = evaluate(model_with_knn, val_dataloader, postprocessors, metrics, device)
+    logger.debug('Finished KNN classification')
 
     # Averaging the results over the n tries for each value of n_per_class
     for n_per_class, knn_module in knn_module_dict.items():
@@ -312,93 +307,81 @@ def eval_knn(
             for t in knn_module.keys():
                 del results_dict[(n_per_class, t, k)]
 
+    # output is (npc, t, k) where npc=number of samples per class, t=try, k=number of neighbors
     return results_dict
 
 
 def eval_knn_with_model(
-    model,
+    model, 
     output_dir,
-    train_dataset_str="ImageNet:split=TRAIN",
-    val_dataset_str="ImageNet:split=VAL",
+    train_dataset,
+    val_dataset,
     nb_knn=(10, 20, 100, 200),
-    temperature=0.07,
+    temperature_list=[0.07],
+    normmode_list = [False],
     autocast_dtype=torch.float,
-    accuracy_averaging=AccuracyAveraging.MEAN_ACCURACY,
-    transform=None,
+    metric_cfg=[{'id':'MulticlassAccuracy', 'top_k':1, 'average':'micro'}, {'id':'MulticlassAccuracy', 'top_k':5, 'average':'micro'}, {'id':'MulticlassAccuracy', 'top_k':5, 'average':'macro'}],
     gather_on_cpu=False,
-    batch_size=256,
-    num_workers=5,
+    dl_cfg = {},
     n_per_class_list=[-1],
     n_tries=1,
+    num_classes = -1,
 ):
-    transform = transform or make_classification_eval_transform()
 
-    train_dataset = make_dataset(
-        dataset_str=train_dataset_str,
-        transform=transform,
-    )
-    val_dataset = make_dataset(
-        dataset_str=val_dataset_str,
-        transform=transform,
-    )
+    model = KnnModelWrapper(model)
+    model.eval()
+    model = model.cuda()
 
     with torch.cuda.amp.autocast(dtype=autocast_dtype):
         results_dict_knn = eval_knn(
             model=model,
             train_dataset=train_dataset,
             val_dataset=val_dataset,
-            accuracy_averaging=accuracy_averaging,
+            metric_cfg=metric_cfg,
             nb_knn=nb_knn,
-            temperature=temperature,
-            batch_size=batch_size,
-            num_workers=num_workers,
+            temperature_list=temperature_list,
+            normmode_list = normmode_list,
+            dl_cfg=dl_cfg,
             gather_on_cpu=gather_on_cpu,
             n_per_class_list=n_per_class_list,
             n_tries=n_tries,
+            num_classes = num_classes,
         )
 
-    results_dict = {}
-    if distributed.is_main_process():
-        for knn_ in results_dict_knn.keys():
-            top1 = results_dict_knn[knn_]["top-1"].item() * 100.0
-            top5 = results_dict_knn[knn_]["top-5"].item() * 100.0
-            results_dict[f"{knn_} Top 1"] = top1
-            results_dict[f"{knn_} Top 5"] = top5
-            logger.info(f"{knn_} classifier result: Top1: {top1:.2f} Top5: {top5:.2f}")
 
-    metrics_file_path = os.path.join(output_dir, "results_eval_knn.json")
-    with open(metrics_file_path, "a") as f:
-        for k, v in results_dict.items():
-            f.write(json.dumps({k: v}) + "\n")
+    results_list = []
+    if distributed.is_main_process():
+
+        # print all metrics
+        dict_str = ''
+        for knn_ in results_dict_knn.keys():
+            dict_str += str(knn_) + ': {'
+            for k, v in results_dict_knn[knn_].items():
+                dict_str += f"{k}: {v.item() * 100.0:.2f}, "
+            dict_str += '}\n'
+        logger.info(f'All metrics result:\n{dict_str.strip()}')
+
+        # save metrics
+        metrics_file_path = os.path.join(output_dir, "results_eval_knn.json")
+        with open(metrics_file_path, "a+") as f:
+            for k, v in results_dict_knn.items():
+                for kk,vv in v.items():
+                    v[kk] = round(vv.item() * 100,2)
+                f.write(json.dumps({str(k): str(v)}) + "\n")
+
+        # add best classifier
+        best_key = None
+        best_val = 0
+        for target_metric in build_metric(metric_cfg, num_classes=1000).keys():
+            for k,v in results_dict_knn.items():
+                if v[target_metric] > best_val:
+                    best_key = k
+                    best_val = v[target_metric]
+            results_list.append(dict(
+                best_classifier = best_key,
+                val = best_val,
+                metric_str = target_metric))
 
     if distributed.is_enabled():
-        torch.distributed.barrier()
-    return results_dict
-
-
-def main(args):
-    model, autocast_dtype = setup_and_build_model(args)
-    eval_knn_with_model(
-        model=model,
-        output_dir=args.output_dir,
-        train_dataset_str=args.train_dataset_str,
-        val_dataset_str=args.val_dataset_str,
-        nb_knn=args.nb_knn,
-        temperature=args.temperature,
-        autocast_dtype=autocast_dtype,
-        accuracy_averaging=AccuracyAveraging.MEAN_ACCURACY,
-        transform=None,
-        gather_on_cpu=args.gather_on_cpu,
-        batch_size=args.batch_size,
-        num_workers=5,
-        n_per_class_list=args.n_per_class_list,
-        n_tries=args.n_tries,
-    )
-    return 0
-
-
-if __name__ == "__main__":
-    description = "DINOv2 k-NN evaluation"
-    args_parser = get_args_parser(description=description)
-    args = args_parser.parse_args()
-    sys.exit(main(args))
+        dist.barrier()
+    return results_list

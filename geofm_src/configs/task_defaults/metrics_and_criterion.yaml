@@ -37,7 +37,23 @@ multilabel_classification:
     average: micro
   - id: MultiLabelAveragePrecision
     average: macro
+  - id: F1Score
+    average: micro
+  - id: F1Score
+    average: macro
 
+knn:
+  val:
+  - id: MulticlassAccuracy
+    top_k: 1
+    average: micro
+  - id: MulticlassAccuracy
+    top_k: 1
+    average: macro
+  - id: F1Score
+    average: micro
+  - id: F1Score
+    average: macro
 
 regression: 
 

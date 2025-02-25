@@ -14,6 +14,8 @@ from torch.utils.data.sampler import Sampler
 import itertools    
 from typing import Any, Optional
 from . import distributed
+from tqdm import tqdm
+from torch.utils.data import Dataset
 
 import numpy as np
 
@@ -191,3 +193,25 @@ def _generate_randperm_indices(*, size: int, generator: torch.Generator):
         perm[j] = perm[i].item()
         perm[i] = value
         yield value
+
+
+def compute_dataset_stats(dataset: Dataset, num_channels: int = 3) -> None:
+    """ Compute the min, max, mean, and std of a given PyTorch compatible
+    datset. Assumes that the data tensor is set as (C, H, W).
+    Taken from: https://github.com/stanfordmlgroup/USat/blob/main/usat/utils/helper.py
+    """
+    num_pixels = 0
+    channels_sum = torch.zeros(num_channels)
+    channels_squared_sum = torch.zeros(num_channels)
+
+    dl = DataLoader(dataset, batch_size=256, num_workers=64)
+    for _, (data, _) in enumerate(tqdm(dl)):
+        channels_sum += torch.sum(data, (0,2,3))
+        channels_squared_sum += torch.sum(data**2, (0,2,3))
+        num_pixels += data.size(0) * data.size(2) * data.size(3)
+
+    mean = channels_sum / num_pixels
+    std = torch.sqrt((channels_squared_sum / num_pixels) - (mean ** 2))
+    print(f"Dataset len: {len(dataset)}")
+    print(f"Mean: {mean}")
+    print(f"Std: {std}")

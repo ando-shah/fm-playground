@@ -7,11 +7,12 @@ class ClsDataAugmentation(torch.nn.Module):
     def __init__(self, split, size):
         super().__init__()
 
-        mean = torch.Tensor([0.0])
-        std = torch.Tensor([1.0])
+        mean = torch.tensor([0.3682, 0.3808, 0.3434])
+        std = torch.tensor([0.2033, 0.1852, 0.1846])
 
         if split == "train":
             self.transform = torch.nn.Sequential(
+                K.Normalize(mean=0, std=255), # noramlized values are from 0-1 range
                 K.Normalize(mean=mean, std=std),
                 K.RandomResizedCrop(size=size, scale=(0.8, 1.0)),
                 K.RandomHorizontalFlip(p=0.5),
@@ -19,6 +20,7 @@ class ClsDataAugmentation(torch.nn.Module):
             )
         else:
             self.transform = torch.nn.Sequential(
+                K.Normalize(mean=0, std=255),
                 K.Normalize(mean=mean, std=std),
                 K.Resize(size=size, align_corners=True),
             )

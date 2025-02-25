@@ -1,0 +1,130 @@
+#!/bin/bash
+export $(cat /home/ando/fm-playground/.env)
+export PYTHONPATH='.'
+cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
+
+fastdevrun=false
+exp_base_name=t2
+
+# If no arguments provided, run all tasks
+if [ $# -eq 0 ]; then
+    # Generate sequence from 0 to (number of tasks - 1)
+    task_ids=($(seq 0 $((${#all_tasks[@]}-1))))
+else
+    task_ids=("$@")
+fi
+
+all_tasks=(
+    # 'base/anysat_s2 linear_probe benv2_s2_10b'
+    #DOFA: BENv2
+    'base/dofa linear_probe benv2_s2_1b 2048'
+    'base/dofa linear_probe benv2_s2_4b 2048'
+    'base/dofa linear_probe benv2_s2_10b 1600'
+    'base/dofa linear_probe benv2_s2_12b 1024'
+
+    #DOFA: Corine
+    'base/dofa linear_probe corine_1b 4096'
+    'base/dofa linear_probe corine_4b 4096'
+    'base/dofa linear_probe corine_10b 3000'
+    'base/dofa linear_probe corine_21b 2048'
+    'base/dofa linear_probe corine_50b 1024'
+    'base/dofa linear_probe corine_202b 400'
+)
+
+########## linear probe defaults
+n_last_blocks_list='[1,4]'
+pooling='[avgpool,cls,default]'
+lrs_linear_probe='[1e-5,5e-5,1e-4,5e-4,1e-3,5e-3,1e-2,5e-2,0.1,0.2,0.3,0.5,1,3,5,10,20]'
+
+########## pe linear probe (=partial finetune) defaults
+lrs_partial_ft="10 0.1 0.01 0.001"
+warmup_epochs=0
+
+########## defaults both
+epochs=50
+batch_size=500
+num_workers=8
+check_val_every_n_epoch=10
+
+# Loop through each task ID provided
+for task_id in "${task_ids[@]}"; do
+    task=${all_tasks[$task_id]}
+
+    ########## extract task specific parameters
+    set -- $task
+    model=$1
+    training_mode=$2
+    ds=$3
+    batch_size=$4
+
+    ########## execution
+    cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py \
+        model=$model \
+        dataset=$ds \
+        output_dir=$ODIR/$exp_base_name/$ds/$model/$training_mode/ \
+        +model.training_mode=$training_mode \
+        \
+        epochs=$epochs \
+        \
+        batch_size=$batch_size \
+        num_workers=$num_workers \
+        num_gpus=1 \
+        seed=21 \
+        "
+
+    if $fastdevrun; then
+        echo "fastdevrun!"
+        cmd="$cmd epochs=1 batch_size=64 trainer.check_val_every_n_epoch=1"
+    else
+        cmd="$cmd epochs=$epochs batch_size=$batch_size trainer.check_val_every_n_epoch=$check_val_every_n_epoch"
+    fi
+
+
+
+    echo "\n\n**************** Running Task: ****************\n\n"
+    echo "Task ID: $task_id"
+    echo "Task: $task"
+    echo "Model: $model"
+    echo "Training Mode: $training_mode"
+    echo "Dataset: $ds"
+    echo "Batch Size: $batch_size"
+    echo "Output Dir: $output_dir"
+    echo "Check Val Every N Epoch: $check_val_every_n_epoch"
+    echo "\n\n************************************************\n\n"
+
+    if [ $training_mode == 'linear_probe' ]; then
+        if $fastdevrun; then
+            cmd="$cmd dataset.subset.train=64 dataset.subset.val=64 dataset.subset.test=64"
+        fi
+        
+        cmd="$cmd \
+            +n_last_blocks_list=$n_last_blocks_list \
+            +pooling=$pooling \
+            +lr=$lrs_linear_probe"
+        echo $cmd
+        $cmd
+            
+    elif [ $training_mode == 'partial_finetune' ]; then
+        if $fastdevrun; then
+            cmd="$cmd dataset.subset.train=64 dataset.subset.val=64 dataset.subset.test=64"
+            lrs_partial_ft="0.1 0.01"
+        fi
+
+        for lr in $lrs_partial_ft; do
+            echo "partial finetune with lr=$lr"
+            lr_cmd="$cmd \
+                +lr=$lr \
+                +base_lr=-1 \
+                +model.params_to_train=[] \
+                warmup_epochs=$warmup_epochs \
+                "
+            echo $lr_cmd
+            $lr_cmd
+        done
+    fi
+done
+
+
+#Run like this:
+# ./t2.sh 0 1 2  # Run tasks 0, 1, and 2
+# ./t2.sh {0..3}  # Run tasks 0 through 3

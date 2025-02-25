@@ -1,0 +1,8 @@
+defaults:
+  - benv2_all
+
+bands: s2
+dataset_name: benv2_s2
+band_ids: [7] #NIR
+num_channels: 1
+

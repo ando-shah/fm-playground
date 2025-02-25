@@ -14,3 +14,4 @@ subset:
   test: -1
 input_key: null
 sequence_length: null #for time series datasets: T goes into the C dimension
+band_gsds: null #for senpamae: list of GSDs for each band

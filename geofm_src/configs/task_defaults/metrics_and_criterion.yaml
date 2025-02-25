@@ -37,9 +37,9 @@ multilabel_classification:
     average: micro
   - id: MultiLabelAveragePrecision
     average: macro
-  - id: F1Score
+  - id: MultilabelF1Score
     average: micro
-  - id: F1Score
+  - id: MultilabelF1Score
     average: macro
 
 knn:

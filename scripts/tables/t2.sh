@@ -4,7 +4,7 @@ export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
 fastdevrun=false
-exp_base_name=t2
+exp_base_name=t2#/v2
 
 # If no arguments provided, run all tasks
 if [ $# -eq 0 ]; then
@@ -19,15 +19,15 @@ all_tasks=(
     #DOFA: BENv2
     'base/dofa linear_probe benv2_s2_1b 2048'
     'base/dofa linear_probe benv2_s2_4b 2048'
-    'base/dofa linear_probe benv2_s2_10b 1600'
-    'base/dofa linear_probe benv2_s2_12b 1024'
+    'base/dofa linear_probe benv2_s2_10b 2048'
+    'base/dofa linear_probe benv2_s2_12b 2048'
 
     #DOFA: Corine
-    'base/dofa linear_probe corine_1b 4096'
-    'base/dofa linear_probe corine_4b 4096'
-    'base/dofa linear_probe corine_10b 3000'
+    'base/dofa linear_probe corine_1b 2048'
+    'base/dofa linear_probe corine_4b 2048'
+    'base/dofa linear_probe corine_10b 2048'
     'base/dofa linear_probe corine_21b 2048'
-    'base/dofa linear_probe corine_50b 1024'
+    'base/dofa linear_probe corine_50b 400' #anything more than 512 is throttled by CPU RAM
     'base/dofa linear_probe corine_202b 400'
 )
 
@@ -42,7 +42,7 @@ warmup_epochs=0
 
 ########## defaults both
 epochs=50
-batch_size=500
+batch_size=1024
 num_workers=8
 check_val_every_n_epoch=10
 
@@ -66,7 +66,7 @@ for task_id in "${task_ids[@]}"; do
         \
         epochs=$epochs \
         \
-        batch_size=$batch_size \
+        ++batch_size=$batch_size \
         num_workers=$num_workers \
         num_gpus=1 \
         seed=21 \
@@ -81,7 +81,7 @@ for task_id in "${task_ids[@]}"; do
 
 
 
-    echo "\n\n**************** Running Task: ****************\n\n"
+    echo -e "\n\n**************** Running Task: ****************\n\n"
     echo "Task ID: $task_id"
     echo "Task: $task"
     echo "Model: $model"
@@ -90,7 +90,7 @@ for task_id in "${task_ids[@]}"; do
     echo "Batch Size: $batch_size"
     echo "Output Dir: $output_dir"
     echo "Check Val Every N Epoch: $check_val_every_n_epoch"
-    echo "\n\n************************************************\n\n"
+    echo -e "\n\n************************************************\n\n"
 
     if [ $training_mode == 'linear_probe' ]; then
         if $fastdevrun; then

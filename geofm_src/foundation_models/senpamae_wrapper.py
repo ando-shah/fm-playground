@@ -5,7 +5,9 @@ from peft import LoraConfig, get_peft_model
 from .SenPaMAE.model import vit_base_patch16
 import numpy as np
 from geofm_src.engine.model import EvalModelWrapper
+import logging
 
+logger = logging.getLogger()
 
 
 
@@ -65,19 +67,23 @@ class SenPaMAEWrapper(EvalModelWrapper):
         if not os.path.exists(srf_path):
             raise ValueError(f"SRF not found at {srf_path}")
         self.srf = np.load(srf_path).T
-        subset_channels = self.data_config.senpamae_channels
-        self.srf = self.srf[subset_channels, :]
+        self.srf = self.srf[self.data_config.senpamae_channels, :]
         self.srf = torch.from_numpy(self.srf).float()
         self.srf = self.srf.unsqueeze(0)
 
-        # Convert band_gsds to numpy array and index it
-        self.band_gsds = np.array(self.data_config.band_gsds)[
-            self.data_config.senpamae_channels
-        ]
-        self.band_gsds = torch.tensor(self.band_gsds).float().unsqueeze(0)
+        band_gsds = self.data_config.band_gsds
+        if band_gsds is None:
+            band_gsds = [10]*self.model_config.num_channels
+            logger.warning("No band GSDs provided, using default values")
+        # Convert band_gsds to numpy array: always 4 bands
+        self.band_gsds = np.array(band_gsds, dtype=np.float32)
+        print(f"Band GSDs: {self.band_gsds}")
 
-        print("SRF shape: ", self.srf.shape)
-        print("Selected GSDs: ", self.band_gsds, self.band_gsds.shape)
+        self.band_gsds = torch.tensor(self.band_gsds).float().unsqueeze(0)
+        assert self.band_gsds.shape[1] == 4, f"Band GSDs size {self.band_gsds.shape[1]} not equal to 4 channels"
+
+        logger.info(f"SRF shape: {self.srf.shape}")
+        logger.info(f"Selected GSDs: {self.band_gsds}")
 
 
     def apply_peft(self, encoder, lora_cfg: dict):
@@ -85,7 +91,7 @@ class SenPaMAEWrapper(EvalModelWrapper):
         Apply LoRA to the last few layers of the encoder using PEFT.
         """
 
-        print("LORA: Applying PEFT: ", lora_cfg)
+        logger.info("LORA: Applying PEFT: ", lora_cfg)
 
         # Configure LoRA
         peft_config = LoraConfig(
@@ -107,9 +113,6 @@ class SenPaMAEWrapper(EvalModelWrapper):
 
     def get_blocks(self, x):
         self.cache = []
-
-        x = x[:, self.data_config.senpamae_channels, :, :]
-
         device = x.device
         srf = self.srf.to(device)
         gsd = self.band_gsds.to(device)

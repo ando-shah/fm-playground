@@ -19,9 +19,7 @@ from geofm_src.engine.model import EvalModelWrapper
 
 EXPECTED_CHANNELS = {
     "s2": 10,
-    "s1": 3,
-    "s1-asc": 2,
-    "spot": 3,
+    "s1": 2,
 }
 
 
@@ -86,7 +84,7 @@ class GalileoWrapper(EvalModelWrapper):
         )
 
         # For keys that require a time dimension unsqueeze and rearrange.
-        if input_key in {"s1", "s1-asc", "s2"}:
+        if input_key in {"s1", "s2"}:
             x = x.unsqueeze(1)  # Now shape: [B, 1, C, H, W]
             x = rearrange(x, "B T C H W -> B H W T C")
 

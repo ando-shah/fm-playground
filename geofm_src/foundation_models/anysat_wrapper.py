@@ -20,6 +20,8 @@ class AnySatWrapper(EvalModelWrapper):
         for idx in blk_indices:
             self.encoder.model.blocks[idx].register_forward_hook(
                 lambda m, i, o: self._cache_block(o))
+            
+        self.patch_size = self.model_config.get('patch_size', 100)
 
     def _cache_block(self,x):
         self.cache.append(x)
@@ -81,14 +83,14 @@ class AnySatWrapper(EvalModelWrapper):
     def get_blocks(self, x):
         self.cache = []
         # TODO these arguments will be different for segmentation 
-        self.encoder(self.format_input(x, self.model_config.input_key), patch_size=10, output='tile')
+        self.encoder(self.format_input(x, self.model_config.input_key), patch_size=self.patch_size, output='tile')
         blocks = self.cache
         self.cache = [] 
         return blocks
 
     def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
         self.cache = []
-        self.encoder(self.format_input(x, self.model_config.input_key), patch_size=10, output='dense', output_modality=self.model_config.input_key)
+        self.encoder(self.format_input(x, self.model_config.input_key), patch_size=self.patch_size, output='dense', output_modality=self.model_config.input_key)
         blocks = self.cache
         self.cache = []
         patch_size = int(blocks[0].size(1) ** 0.5)

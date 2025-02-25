@@ -18,7 +18,7 @@ output_dir: null
 output_dir_suffix: null
 resume: null
 logger: mlflow
-overwrite: true
+overwrite: false
 
 trainer: 
   check_val_every_n_epoch: 1000

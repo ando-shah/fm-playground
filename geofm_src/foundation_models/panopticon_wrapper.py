@@ -13,12 +13,12 @@ class PanopticonWrapper(EvalModelWrapper):
         self.norm = self.encoder.norm
         self.blk_indices = blk_indices
 
-        wavelengths = self.data_config.band_wavelengths
+        wavelengths = self.data_config.wavelengths_mean_nm
         self.register_buffer('chn_ids',
-            torch.tensor([wl for wl in wavelengths]))
+            torch.tensor([wl for wl in wavelengths]).unsqueeze(0))
     
     def get_blocks(self, x):
-        x = dict(imgs=x, chn_ids=self.chn_ids.unsqueeze(0).expand(x.size(0), -1))
+        x = dict(imgs=x, chn_ids=self.chn_ids.expand(x.size(0), -1))
 
         if self.encoder.chunked_blocks:
             x_blocks = self.encoder._get_intermediate_layers_chunked(x, self.blk_indices)

@@ -247,7 +247,7 @@ class SpectralEarthDataset(NonGeoDataset):
             # remove any None values
             indices = [i for i in indices if i is not None]
             # print(f'Indices: {indices}')
-            image_target = torch.zeros(self.num_classes, dtype=torch.float32)
+            image_target = torch.zeros(self.num_classes, dtype=torch.long)
             image_target[indices] = 1
             return image_target
 

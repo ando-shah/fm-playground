@@ -14,9 +14,9 @@ class RegDataAugmentation(torch.nn.Module):
 
         self.output_chn_ids = source_chn_ids
 
-        # data already comes normalized between 0 and 1
-        mean = torch.Tensor([0.0])
-        std = torch.Tensor([1.0])
+        # From 100% of train and val splits
+        mean = torch.Tensor([0.7588])
+        std = torch.Tensor([0.2086])
 
         if band_ids is not None:
             if source_chn_ids is not None:

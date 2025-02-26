@@ -16,7 +16,7 @@ import torch.nn as nn
 from fvcore.common.checkpoint import Checkpointer, PeriodicCheckpointer
 
 
-from .utils.logger import MetricLogger, update_linear_probe_metrics
+from .utils.logger import MetricLogger, update_linear_probe_metrics, BestValCheckpointer
 from .utils.utils import evaluate, blocks_to_cls, remove_ddp_wrapper
 from .utils.data import make_data_loader, SamplerType
 from .utils.metrics import build_metric, build_criterion, build_optimizer
@@ -246,6 +246,10 @@ def eval_linear(
 
     metrics,
     training_num_classes,
+
+    val_monitor = None,
+    val_monitor_higher_is_better = True,
+
     resume=True,
     classifier_fpath=None,
     val_class_mapping=None,
@@ -256,11 +260,13 @@ def eval_linear(
     start_iter = checkpointer.resume_or_load(classifier_fpath or "", resume=resume).get("iteration", -1) + 1
 
     periodic_checkpointer = PeriodicCheckpointer(checkpointer, checkpoint_period, max_iter=max_iter, max_to_keep=1)
+    best_val_checkpointer = BestValCheckpointer(checkpointer, val_monitor, val_monitor_higher_is_better)
     iteration = start_iter
     logger.info("Starting training from iteration {}".format(start_iter))
     metric_logger = MetricLogger(delimiter="  ", output_dir=output_dir, output_file='training_metrics.json')
     header = "Training"
     criterion = build_criterion(criterion_cfg)
+    all_metrics_results_dict = None
 
     for data, labels in metric_logger.log_every(
         train_data_loader,
@@ -299,8 +305,8 @@ def eval_linear(
             periodic_checkpointer.step(iteration)
             torch.cuda.synchronize()
 
-        if eval_period_iter > 0 and (iteration + 1) % int(eval_period_iter) == 0 and iteration != max_iter - 1:
-            _, all_metrics_results_dict = evaluate_linear_classifiers(
+        if (eval_period_iter > 0 and (iteration + 1) % int(eval_period_iter) == 0) or iteration == max_iter - 1:
+            results_list, all_metrics_results_dict = evaluate_linear_classifiers(
                 feature_model=feature_model,
                 linear_classifiers=remove_ddp_wrapper(linear_classifiers),
                 data_loader=val_data_loader,
@@ -312,30 +318,18 @@ def eval_linear(
                 class_mapping=val_class_mapping,)
             
             metric_logger.update_linear_probe_metrics(all_metrics_results_dict)
-
+            best_val_checkpointer.update(results_list, iteration)
+            
             torch.cuda.synchronize()
 
         iteration = iteration + 1
 
-    # clean up memory
-    del train_data_loader, checkpointer, periodic_checkpointer, optimizer, scheduler, criterion
-    torch.cuda.synchronize()
-    torch.cuda.empty_cache()
-    time.sleep(5)
+    best_classifier_str = best_val_checkpointer.load_best() # also loads weights into linear_classifier
 
-    val_results_list, all_metrics_results_dict = evaluate_linear_classifiers(
-        feature_model=feature_model,
-        linear_classifiers=remove_ddp_wrapper(linear_classifiers),
-        data_loader=val_data_loader,
-        metrics_file_path=metrics_file_path,
-        prefixstring = 'FINAL VAL',
-        metrics = metrics,
-        training_num_classes=training_num_classes,
-        iteration=iteration,
-        class_mapping=val_class_mapping,
-    )
-    update_linear_probe_metrics(output_dir, all_metrics_results_dict, prefix='val', iteration=iteration)
-    return val_results_list, feature_model, linear_classifiers, iteration
+    if all_metrics_results_dict is not None: # eval might already be done
+        update_linear_probe_metrics(output_dir, all_metrics_results_dict, prefix='val', iteration=iteration)
+    
+    return best_classifier_str, feature_model, linear_classifiers, iteration
 
 
 
@@ -405,6 +399,9 @@ def run_eval_linear(
     test_metrics_list=None,
     criterion_cfg = {'id': 'CrossEntropyLoss'},
     optim_cfg = {'id': 'SGD', 'momentum': 0.9, 'weight_decay': 0},
+
+    val_monitor='acc_top-1_micro', # corresponds to str of above val_metric
+    val_monitor_higher_is_better=True,
 
     resume=True,
     classifier_fpath=None,
@@ -503,7 +500,7 @@ def run_eval_linear(
         test_class_mappings.append(class_mapping)
 
     metrics_file_path = os.path.join(output_dir, "results_eval_linear.json")
-    val_results_list, feature_model, linear_classifiers, iteration = eval_linear(
+    best_classifier_str, feature_model, linear_classifiers, iteration = eval_linear(
         feature_model = feature_model,
         linear_classifiers = linear_classifiers,
         train_data_loader = train_data_loader,
@@ -522,6 +519,8 @@ def run_eval_linear(
         val_class_mapping = val_class_mapping,
         classifier_fpath = classifier_fpath,
         criterion_cfg = criterion_cfg,
+        val_monitor=val_monitor,
+        val_monitor_higher_is_better=val_monitor_higher_is_better,
     )
     results_list = []
     if len(test_dataset_lists) > 0:
@@ -535,7 +534,7 @@ def run_eval_linear(
             metrics_file_path,
             training_num_classes,
             iteration,
-            val_results_list[0]["best_classifier"],
+            best_classifier_str,
             test_class_mappings=test_class_mappings,)
         
         for ds_id, cls_metric_dict in test_all_metrics_out.items():

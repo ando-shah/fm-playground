@@ -55,6 +55,7 @@ class BigEarthNetv2(BigEarthNet):
         },
     }
     image_size = (120, 120)
+    num_channels = 12
 
     def __init__(
         self,
@@ -243,8 +244,10 @@ class ClsDataAugmentation(torch.nn.Module):
     )
 
 
-    def __init__(self, split, size, source_chn_ids, band_ids=None, bands="all"):
+    def __init__(self, split, size, source_chn_ids, band_ids=None, bands="all", num_channels=12):
         super().__init__()
+
+        self.num_channels = num_channels
 
         # if bands == "all":
         #     mins = self.mins
@@ -321,7 +324,16 @@ class ClsDataAugmentation(torch.nn.Module):
         if self.bands == "rgb":
             sample["image"] = sample["image"][1:4, ...].flip(dims=(0,))
             # get in rgb order and then normalization can be applied
+
         x_out = self.transform(sample["image"]).squeeze(0)
+
+        # HACKY: Will only work for models that dont need chn_ids
+        # Pad with zeros if num_channels is greater than the actual channels
+        if hasattr(self, 'num_channels') and self.num_channels > x_out.shape[0]: 
+            padding_channels = self.num_channels - x_out.shape[0]
+            padding = torch.zeros((padding_channels, *x_out.shape[1:]), device=x_out.device, dtype=x_out.dtype)
+            x_out = torch.cat([x_out, padding], dim=0)
+        
         return x_out, sample["label"]
 
 
@@ -330,6 +342,7 @@ class BenV2Dataset(BaseDataset):
         super().__init__(config)
         self.bands = config.bands
         self.num_classes = config.num_classes
+        self.num_channels = config.num_channels
 
         if self.bands == "rgb":
             # start with rgb and extract later
@@ -339,10 +352,10 @@ class BenV2Dataset(BaseDataset):
 
     def create_dataset(self):
         train_transform = ClsDataAugmentation(
-            split="train", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids
+            split="train", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids, num_channels=self.num_channels
         )
         eval_transform = ClsDataAugmentation(
-            split="test", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids
+            split="test", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids, num_channels=self.num_channels
         )
 
         # Override the config with the transformed channel ids
@@ -361,14 +374,6 @@ class BenV2Dataset(BaseDataset):
             transforms=train_transform,
         )
 
-        num_subset_samples = int(0.1 * len(dataset_train))
-        # Split the dataset into the subset and the remaining part
-        subset_train, _ = random_split(
-            dataset_train,
-            [num_subset_samples, len(dataset_train) - num_subset_samples],
-            generator=Generator().manual_seed(42),
-        )
-
         dataset_val = BigEarthNetv2(
             root=self.root_dir,
             num_classes=self.num_classes,
@@ -384,4 +389,4 @@ class BenV2Dataset(BaseDataset):
             transforms=eval_transform,
         )
 
-        return subset_train, dataset_val, dataset_test
+        return dataset_train, dataset_val, dataset_test

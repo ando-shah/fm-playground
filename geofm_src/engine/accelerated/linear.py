@@ -19,7 +19,7 @@ from fvcore.common.checkpoint import Checkpointer, PeriodicCheckpointer
 from .utils.logger import MetricLogger, update_linear_probe_metrics
 from .utils.utils import evaluate, blocks_to_cls, remove_ddp_wrapper
 from .utils.data import make_data_loader, SamplerType
-from .utils.metrics import build_metric, build_criterion
+from .utils.metrics import build_metric, build_criterion, build_optimizer
 from .utils import distributed
 from geofm_src.engine.model import EvalModelWrapper
 
@@ -404,6 +404,7 @@ def run_eval_linear(
     val_metrics=[{'id': 'MulticlassAccuracy'}],
     test_metrics_list=None,
     criterion_cfg = {'id': 'CrossEntropyLoss'},
+    optim_cfg = {'id': 'SGD', 'momentum': 0.9, 'weight_decay': 0},
 
     resume=True,
     classifier_fpath=None,
@@ -457,7 +458,9 @@ def run_eval_linear(
         default_blocks_to_featurevec = feature_model.default_blocks_to_featurevec,
     )
     
-    optimizer = torch.optim.SGD(optim_param_groups, momentum=0.9, weight_decay=0)
+    optimizer = build_optimizer(optim_param_groups, optim_cfg)
+
+
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, max_iter, eta_min=0)
     checkpointer = Checkpointer(linear_classifiers, output_dir, optimizer=optimizer, scheduler=scheduler)
     checkpointer.logger = logger

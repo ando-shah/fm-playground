@@ -66,6 +66,7 @@ def main(cfg: DictConfig):
             args_defining_run = {
                 "batch_size": "bsz",
                 "epochs": "e",
+                'optim.display_name': 'optim',
             }
         else:
             args_defining_run = {
@@ -107,10 +108,8 @@ def main(cfg: DictConfig):
     experiment_name = os.path.relpath(cfg.output_dir, os.environ['ODIR'])
     if cfg.add_defining_args:
             
-        assert all([not "." in k for k in args_defining_run.keys()]), (
-            "cannot contain nested '.' yet"
-        )
-        run_name = "_".join([f"{v}={cfg[k]}" for k, v in args_defining_run.items()])
+        run_name = "_".join(
+            [f"{v}={OmegaConf.select(cfg,k)}" for k, v in args_defining_run.items()])
 
         cfg.output_dir = os.path.join(
             cfg.output_dir, run_name
@@ -270,6 +269,7 @@ def main(cfg: DictConfig):
                 eval_period_epoch = cfg.trainer.check_val_every_n_epoch,
                 criterion_cfg = cfg.task_kwargs.criterion,
                 val_metrics = cfg.task_kwargs.val,
+                optim_cfg=cfg.optim,
             )
 
             # process loss file

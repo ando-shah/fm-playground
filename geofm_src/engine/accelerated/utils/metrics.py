@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, List
 
 import torch
 from torch import Tensor
-from torchmetrics import MetricCollection
+from torchmetrics import MeanAbsoluteError, MetricCollection
 from torchmetrics import Accuracy
 from torchmetrics.classification import MulticlassAccuracy, MultilabelAveragePrecision, MultilabelF1Score, JaccardIndex, F1Score
 from torchmetrics.regression import MeanSquaredError
@@ -107,3 +107,18 @@ def build_criterion(cfg):
         return nn.MSELoss(**cfg)
     else:
         raise ValueError(f"Unknown criterion {id}")
+    
+
+def build_optimizer(optim_param_groups, cfg):
+    cfg = deepcopy(cfg)
+    id = cfg.pop("id")
+    cfg.pop('display_name')
+    logger.info(f"Optimizer: {id} with cfg {cfg}")
+    if id == "Adam":
+        return torch.optim.Adam(optim_param_groups, **cfg)
+    elif id == "AdamW":
+        return torch.optim.AdamW(optim_param_groups, **cfg)
+    elif id == "SGD":
+        return torch.optim.SGD(optim_param_groups, **cfg)
+    else:
+        raise ValueError(f"Unknown optimizer {id}")

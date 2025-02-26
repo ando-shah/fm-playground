@@ -9,3 +9,4 @@ band_ids: [0] #, 1, 2] #all 3 channels are the same
 data_path: ${oc.env:DATASETS_DIR}/TropicalCyclone
 image_resolution: 224
 multilabel: false
+num_channels: 1

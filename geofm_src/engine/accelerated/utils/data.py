@@ -18,6 +18,7 @@ from tqdm import tqdm
 from torch.utils.data import Dataset
 
 import numpy as np
+import random
 
 logger = logging.getLogger('eval')
 
@@ -195,16 +196,26 @@ def _generate_randperm_indices(*, size: int, generator: torch.Generator):
         yield value
 
 
-def compute_dataset_stats(dataset: Dataset, num_channels: int = 3) -> None:
+def compute_dataset_stats(dataset: Dataset, num_channels: int = 3, batch_size=256, num_workers=16, subset=1) -> None:
     """ Compute the min, max, mean, and std of a given PyTorch compatible
     datset. Assumes that the data tensor is set as (C, H, W).
     Taken from: https://github.com/stanfordmlgroup/USat/blob/main/usat/utils/helper.py
     """
+
+    indices = list(range(len(dataset)))
+    random.shuffle(indices)
+    if isinstance(subset, int) and subset > 0:
+        subset = min(subset, len(dataset))
+        indices = indices[:subset]
+    elif isinstance(subset, float) and 0 < subset < 1: 
+        indices = indices[:int(subset*len(dataset))]
+    dataset = torch.utils.data.Subset(dataset, indices)
+
     num_pixels = 0
     channels_sum = torch.zeros(num_channels)
     channels_squared_sum = torch.zeros(num_channels)
 
-    dl = DataLoader(dataset, batch_size=256, num_workers=64)
+    dl = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
     for _, (data, _) in enumerate(tqdm(dl)):
         channels_sum += torch.sum(data, (0,2,3))
         channels_squared_sum += torch.sum(data**2, (0,2,3))

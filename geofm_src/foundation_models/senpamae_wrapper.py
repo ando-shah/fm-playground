@@ -80,7 +80,7 @@ class SenPaMAEWrapper(EvalModelWrapper):
         print(f"Band GSDs: {self.band_gsds}")
 
         self.band_gsds = torch.tensor(self.band_gsds).float().unsqueeze(0)
-        assert self.band_gsds.shape[1] == 4, f"Band GSDs size {self.band_gsds.shape[1]} not equal to 4 channels"
+        assert self.band_gsds.shape[1] == self.model_config.num_channels, f"Band GSDs size {self.band_gsds.shape[1]} not equal to {self.model_config.num_channels} channels"
 
         logger.info(f"SRF shape: {self.srf.shape}")
         logger.info(f"Selected GSDs: {self.band_gsds}")
@@ -126,3 +126,20 @@ class SenPaMAEWrapper(EvalModelWrapper):
     def default_blocks_to_featurevec(self, block_list):
         # no official recommendation by the authors, using this for now
         return self.norm(block_list[-1]).mean(dim=1)
+    
+    # def replace_pe(self, num_channels):
+
+    #     num_patches = (
+    #         (self.model_config.image_resolution // self.model_config.patch_size) ** 2
+    #     )
+
+    #     patchify = Rearrange(
+    #             "b c (h1 h) (w1 w) -> b c (h1 w1) (h w)",
+    #             h1=self.sqrt_num_patches,
+    #             w1=self.sqrt_num_patches,
+    #         )
+
+
+    #     self.encoder.pos_embedding = pos_embedding
+
+    #     return pos_embedding

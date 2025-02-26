@@ -11,3 +11,10 @@ data_path: ${oc.env:DATASETS_DIR}
 image_resolution: 224
 multilabel: false
 return_rgb: true
+
+band_gsds: [0.3, 0.3, 0.3]
+senpamae_channels: #senpamae SRF has only 10 channels (listed above), so indexes below are relative to that list
+  - 3
+  - 2
+  - 1
+senpamae_srf_name: rfs_sentinel2_a.npy

@@ -860,3 +860,324 @@ computing stats for test
 Dataset len: 1000
 Mean: tensor([0.1242, 0.1297, 0.0680, 0.1013])
 Std: tensor([0.7872, 0.8109, 0.8808, 0.9662])
+
+
+-------------------------- m-NeonTree
+defaults:
+- geobench
+dataset_type: geobench
+benchmark_name: segmentation_v1.0
+dataset_name: m-NeonTree
+band_names:
+- Red
+- Green
+- Blue
+band_wavelengths: []
+data_path: /hkfs/work/workspace/scratch/tum_mhj8661-panopticon/datasets/geobench
+multilabel: false
+additional_param: null
+ignore_index: null
+image_resolution: 224
+task: segmentation
+wavelengths_mean_nm:
+- 650
+- 560
+- 450
+wavelengths_sigma_nm:
+- 16
+- 16
+- 16
+num_classes: 2
+num_channels: 3
+
+computing stats for train
+Dataset len: 270
+Mean: tensor([0.0008, 0.0002, 0.0013])
+Std: tensor([0.9673, 0.9592, 0.9382])
+
+computing stats for val
+Dataset len: 94
+Mean: tensor([0.5909, 0.3105, 0.5348])
+Std: tensor([0.9834, 0.8900, 1.1288])
+
+computing stats for test
+Dataset len: 93
+Mean: tensor([0.4738, 0.1856, 0.3119])
+Std: tensor([0.9343, 0.8322, 1.0070])
+
+
+-------------------------- m-nz-cattle
+defaults:
+- geobench
+dataset_type: geobench
+benchmark_name: segmentation_v1.0
+dataset_name: m-nz-cattle
+band_names:
+- Red
+- Green
+- Blue
+band_wavelengths: []
+data_path: /hkfs/work/workspace/scratch/tum_mhj8661-panopticon/datasets/geobench
+multilabel: false
+additional_param: null
+ignore_index: null
+image_resolution: 224
+task: segmentation
+wavelengths_mean_nm:
+- 650
+- 560
+- 450
+wavelengths_sigma_nm:
+- 16
+- 16
+- 16
+num_classes: 2
+num_channels: 3
+
+computing stats for train
+Dataset len: 524
+Mean: tensor([0.0068, 0.0062, 0.0067])
+Std: tensor([0.9819, 0.9763, 0.9783])
+
+computing stats for val
+Dataset len: 66
+Mean: tensor([-0.0396, -0.0600, -0.0575])
+Std: tensor([0.9493, 0.9688, 0.9430])
+
+computing stats for test
+Dataset len: 65
+Mean: tensor([0.0732, 0.0764, 0.0652])
+Std: tensor([0.9828, 1.0179, 0.9866])
+
+
+-------------------------- m-pv4ger
+defaults:
+- geobench
+dataset_type: geobench
+benchmark_name: classification_v1.0
+dataset_name: m-pv4ger
+band_names:
+- Red
+- Green
+- Blue
+band_wavelengths: []
+data_path: /hkfs/work/workspace/scratch/tum_mhj8661-panopticon/datasets/geobench
+multilabel: false
+additional_param: null
+ignore_index: null
+image_resolution: 224
+task: classification
+wavelengths_mean_nm:
+- 650
+- 560
+- 450
+wavelengths_sigma_nm:
+- 16
+- 16
+- 16
+num_classes: 2
+num_channels: 3
+band_gsds:
+- 0.1
+- 0.1
+- 0.1
+senpamae_channels:
+- 2
+- 1
+- 0
+- 6
+senpamae_srf_name: rfs_sentinel2_a.npy
+
+computing stats for train
+Dataset len: 11814
+Mean: tensor([-0.0045, -0.0050, -0.0055])
+Std: tensor([0.9951, 0.9930, 0.9930])
+
+computing stats for val
+Dataset len: 999
+Mean: tensor([-0.0111,  0.0205, -0.1213])
+Std: tensor([0.9329, 0.9291, 0.9360])
+
+computing stats for test
+Dataset len: 999
+Mean: tensor([ 0.0029,  0.0127, -0.1133])
+Std: tensor([0.9520, 0.9335, 0.9403])
+
+
+-------------------------- m-SA-crop-type
+defaults:
+- geobench
+- s2_12b
+dataset_type: geobench
+benchmark_name: segmentation_v1.0
+dataset_name: m-SA-crop-type
+band_names:
+- 01 - Coastal aerosol
+- 02 - Blue
+- 03 - Green
+- 04 - Red
+- 05 - Vegetation Red Edge
+- 06 - Vegetation Red Edge
+- 07 - Vegetation Red Edge
+- 08 - NIR
+- 08A - Vegetation Red Edge
+- 09 - Water vapour
+- 11 - SWIR
+- 12 - SWIR
+band_wavelengths: []
+data_path: /hkfs/work/workspace/scratch/tum_mhj8661-panopticon/datasets/geobench
+multilabel: false
+additional_param: null
+ignore_index: null
+image_resolution: 224
+num_channels: 12
+wavelengths_mean_nm:
+- 442
+- 492
+- 559
+- 664
+- 741
+- 739
+- 782
+- 827
+- 864
+- 945
+- 1613
+- 2203
+wavelengths_sigma_nm:
+- 7
+- 24
+- 13
+- 12
+- 5
+- 5
+- 7
+- 37
+- 8
+- 8
+- 34
+- 64
+senpamae_channels:
+- 1
+- 2
+- 3
+- 7
+senpamae_srf_name: rfs_sentinel2_a.npy
+task: segmentation
+num_classes: 10
+
+computing stats for train
+Dataset len: 3000
+Mean: tensor([-0.0066, -0.0011,  0.0027,  0.0123,  0.0130,  0.0063,  0.0035,  0.0010,
+         0.0006, -0.0003,  0.0214,  0.0236])
+Std: tensor([0.9934, 0.9814, 0.9769, 0.9781, 0.9830, 0.9829, 0.9837, 0.9804, 0.9814,
+        0.9817, 0.9808, 0.9858])
+
+computing stats for val
+Dataset len: 1000
+Mean: tensor([ 0.0264,  0.0144, -0.0007, -0.0034, -0.0128, -0.0354, -0.0472, -0.0517,
+        -0.0573, -0.0509,  0.0254,  0.0483])
+Std: tensor([0.9918, 0.9945, 0.9930, 0.9707, 0.9767, 0.9962, 0.9924, 0.9924, 0.9860,
+        0.9876, 0.9497, 0.9665])
+
+computing stats for test
+Dataset len: 1000
+Mean: tensor([ 0.0176,  0.0243,  0.0171,  0.0193,  0.0149, -0.0129, -0.0217, -0.0198,
+        -0.0227, -0.0149,  0.0571,  0.0608])
+Std: tensor([1.0242, 1.0160, 0.9941, 0.9696, 0.9640, 0.9527, 0.9448, 0.9442, 0.9359,
+        0.9310, 0.9360, 0.9552])
+
+
+-------------------------- m-so2sat
+defaults:
+- geobench
+- s2_10b
+dataset_type: geobench
+benchmark_name: classification_v1.0
+dataset_name: m-so2sat
+band_names:
+- 02 - Blue
+- 03 - Green
+- 04 - Red
+- 05 - Vegetation Red Edge
+- 06 - Vegetation Red Edge
+- 07 - Vegetation Red Edge
+- 08 - NIR
+- 08A - Vegetation Red Edge
+- 11 - SWIR
+- 12 - SWIR
+band_wavelengths: []
+data_path: /hkfs/work/workspace/scratch/tum_mhj8661-panopticon/datasets/geobench
+multilabel: false
+additional_param: null
+ignore_index: null
+image_resolution: 224
+num_channels: 10
+wavelengths_mean_nm:
+- 492
+- 559
+- 664
+- 704
+- 741
+- 782
+- 827
+- 865
+- 1613
+- 2203
+wavelengths_sigma_nm:
+- 24
+- 13
+- 12
+- 5
+- 5
+- 7
+- 37
+- 8
+- 34
+- 64
+band_gsds:
+- 10
+- 10
+- 10
+- 20
+- 20
+- 20
+- 10
+- 20
+- 20
+- 20
+senpamae_channels:
+- 0
+- 1
+- 2
+- 3
+- 4
+- 5
+- 6
+- 7
+- 8
+- 9
+senpamae_srf_name: rfs_sentinel2_a.npy
+task: classification
+num_classes: 17
+
+computing stats for train
+Dataset len: 19992
+Mean: tensor([ 0.0006, -0.0015,  0.0014,  0.0035,  0.0192,  0.0222,  0.0181,  0.0212,
+         0.0050, -0.0016])
+Std: tensor([0.9978, 0.9966, 0.9970, 1.0008, 1.0035, 1.0064, 0.9955, 1.0056, 0.9918,
+        0.9885])
+
+computing stats for val
+Dataset len: 986
+Mean: tensor([ 0.0422,  0.0357,  0.0443,  0.0169, -0.0359, -0.0395, -0.0397, -0.0393,
+         0.0374,  0.0602])
+Std: tensor([0.8015, 0.7239, 0.7102, 0.6932, 0.7487, 0.7875, 0.8154, 0.8211, 0.8129,
+        0.8064])
+
+computing stats for test
+Dataset len: 986
+Mean: tensor([ 0.0132,  0.0142,  0.0388,  0.0118, -0.0492, -0.0585, -0.0615, -0.0637,
+         0.0233,  0.0593])
+Std: tensor([0.7436, 0.6803, 0.6848, 0.6570, 0.7120, 0.7487, 0.7757, 0.7832, 0.7878,
+        0.8090])

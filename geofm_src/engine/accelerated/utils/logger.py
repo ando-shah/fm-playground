@@ -20,6 +20,7 @@ import math
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
+from fvcore.common.checkpoint import Checkpointer
 
 logger = logging.getLogger("eval")
 
@@ -297,6 +298,69 @@ class MetricLogger(object):
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         logger.info("{} Total time: {} ({:.6f} s / it)\n".format(header, total_time_str, total_time / n_iterations))
 
+
+class BestValCheckpointer:
+    def __init__(self, checkpointer: Checkpointer, metric_str: str, higher_is_better: bool):
+        self.checkpointer = checkpointer
+        self.metric_str = metric_str
+        self.higher_is_better = higher_is_better
+        self.best_classifier_str = ''
+        self.filename = 'best_model_by_val'
+
+        if self.higher_is_better:
+            self.best_metric = float("-inf")
+        else:
+            self.best_metric = float("inf")
+
+        ckpt_path = self._get_ckpt_path()
+        if os.path.exists(ckpt_path):
+            ckpt = torch.load(ckpt_path, map_location='cpu')
+            self._assert_correct_ckpt(ckpt)
+            self.best_metric = ckpt['val']
+            iteration = ckpt['iteration']
+            logger.info(f'Loaded best value {self.best_metric} by {metric_str} from iteration {iteration}')
+
+    def update(self, results_list, iteration):
+        """ built to work with output of linear.py/evaluate_lienar_classifiers """
+        res_dict = [r for r in results_list if r['metric_str'] == self.metric_str]
+        assert len(res_dict) == 1, f'Found {len(res_dict)} values for {self.metric_str}'
+        best_classifier_str = res_dict[0]['best_classifier']
+        val = res_dict[0]['val']
+
+        if self.higher_is_better:
+            is_better = val > self.best_metric
+        else:
+            is_better = val < self.best_metric
+
+        if is_better:
+            logger.info(f"New best {self.metric_str}: {val:.4f} (old best: {self.best_metric:.4f})")
+            self.best_metric = val
+            self.checkpointer.save(self.filename, 
+                iteration=iteration, 
+                best_classifier_str=best_classifier_str, 
+                metric_str=self.metric_str, 
+                higher_is_better=self.higher_is_better,
+                val=val)
+
+    def _get_ckpt_path(self):
+        return os.path.join(self.checkpointer.save_dir, f'{self.filename}.pth')
+
+    def _assert_correct_ckpt(self, ckpt):
+        assert ckpt['higher_is_better'] == self.higher_is_better, 'Loaded model has different higher_is_better setting'
+        assert ckpt['metric_str'] == self.metric_str, 'Loaded model has different metric_str'
+
+    def load_best(self):
+        """ load best ckpt into the model of self.checkpointer and return the dict """
+        ckpt = self.checkpointer.load(self._get_ckpt_path()) # also loads model weights in self.checkpointer.model
+        self._assert_correct_ckpt(ckpt)
+
+        best_classifier_str = ckpt['best_classifier_str']
+        metric_str = ckpt['metric_str']
+        iteration = ckpt['iteration']
+        val = ckpt['val']
+
+        logger.info(f'Loaded best model with {val:.4f} by {metric_str} from iteration {iteration}')
+        return best_classifier_str
 
 class SmoothedValue:
     """Track a series of values and provide access to smoothed values over a

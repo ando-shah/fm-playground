@@ -323,7 +323,7 @@ class BestValCheckpointer:
     def update(self, results_list, iteration):
         """ built to work with output of linear.py/evaluate_lienar_classifiers """
         res_dict = [r for r in results_list if r['metric_str'] == self.metric_str]
-        assert len(res_dict) == 1, f'Found {len(val)} values for {self.metric_str}'
+        assert len(res_dict) == 1, f'Found {len(res_dict)} values for {self.metric_str}'
         best_classifier_str = res_dict[0]['best_classifier']
         val = res_dict[0]['val']
 

@@ -327,6 +327,10 @@ class ClsDataAugmentation(torch.nn.Module):
 
         x_out = self.transform(sample["image"]).squeeze(0)
 
+        if self.bands == "s1":
+            # flip the channel ordering for s1 bands, because torchgeo returns them in VH, VV order and models expect VV, VH order
+            x_out = x_out.flip(dims=(0,))
+
         # HACKY: Will only work for models that dont need chn_ids
         # Pad with zeros if num_channels is greater than the actual channels
         if hasattr(self, 'num_channels') and self.num_channels > x_out.shape[0]: 

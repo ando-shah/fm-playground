@@ -1192,3 +1192,139 @@ Mean: tensor([ 0.0132,  0.0142,  0.0388,  0.0118, -0.0492, -0.0585, -0.0615, -0.
          0.0233,  0.0593])
 Std: tensor([0.7436, 0.6803, 0.6848, 0.6570, 0.7120, 0.7487, 0.7757, 0.7832, 0.7878,
         0.8090])
+
+-------------------------- resisc45
+dataset_type: resisc45
+task: classification
+num_classes: 45
+num_channels: 3
+data_path: /data/panopticon/datasets/resisc45
+wavelengths_mean_nm:
+- 665
+- 560
+- 490
+wavelengths_sigma_nm:
+- 16
+- 16
+- 16
+wavelengths_mean_microns: null
+multilabel: false
+image_resolution: 224
+subset:
+  train: -1
+  val: -1
+  test: -1
+input_key: null
+sequence_length: null
+band_gsds:
+- 10
+- 10
+- 10
+defaults:
+- base_dataset
+dataset_name: resisc45
+senpamae_channels:
+- 3
+- 2
+- 1
+senpamae_srf_name: rfs_sentinel2_a_13b.npy
+
+computing stats for train
+Dataset len: 18900
+Mean: tensor([0.0049, 0.0058, 0.0068])
+Std: tensor([0.9892, 0.9872, 0.9874])
+computing stats for val
+Dataset len: 6300
+Mean: tensor([-0.0082, -0.0028, -0.0030])
+Std: tensor([0.9835, 0.9802, 0.9820])
+computing stats for test
+Dataset len: 6300
+Mean: tensor([0.0035, 0.0069, 0.0077])
+Std: tensor([0.9915, 0.9904, 0.9914])
+
+-------------------------- digital_typhoon
+dataset_type: digital_typhoon
+task: regression
+num_classes: 1
+num_channels: 1
+data_path: /data/panopticon/datasets/DigitalTyphoon
+wavelengths_mean_nm: null
+wavelengths_sigma_nm: null
+wavelengths_mean_microns: null
+multilabel: false
+image_resolution: 224
+subset:
+  train: -1
+  val: -1
+  test: -1
+input_key: null
+sequence_length: 1
+band_gsds: null
+defaults:
+- base_dataset
+dataset_name: digital_typhoon
+band_ids:
+- 0
+
+INFO:root:[DigitalTyphoon] Temporal sequence length: 1
+Sequential(
+  (0): Normalize(p=1.0, p_batch=1.0, same_on_batch=True, mean=tensor([0.7588]), std=tensor([0.2086]))
+  (1): RandomResizedCrop(scale=(0.8, 1.0), resize_to=(0.75, 1.3333333333333333), output_size=(224, 224), p=1.0, p_batch=1.0, same_on_batch=False, size=(224, 224), resample=bilinear, align_corners=True, cropping_mode=slice, padding_mode=zeros)
+  (2): RandomHorizontalFlip(p=0.5, p_batch=1.0, same_on_batch=False)
+  (3): RandomVerticalFlip(p=0.5, p_batch=1.0, same_on_batch=False)
+)
+Sequential(
+  (0): Normalize(p=1.0, p_batch=1.0, same_on_batch=True, mean=tensor([0.7588]), std=tensor([0.2086]))
+  (1): Resize(output_size=(224, 224), p=1.0, p_batch=1.0, same_on_batch=True, size=(224, 224), side=short, resample=bilinear, align_corners=True, antialias=False)
+)
+computing stats for train
+Dataset len: 110318
+Mean: tensor([-0.0187])
+Std: tensor([1.0218])
+computing stats for val
+Dataset len: 28040
+Mean: tensor([0.0754])
+Std: tensor([0.8893])
+computing stats for test
+Dataset len: 35060
+Mean: tensor([0.0757])
+Std: tensor([0.8008])
+
+-------------------------- tropical_cyclone
+dataset_type: tropical_cyclone
+task: regression
+num_classes: 1
+num_channels: 1
+data_path: /data/panopticon/datasets/TropicalCyclone
+wavelengths_mean_nm: null
+wavelengths_sigma_nm: null
+wavelengths_mean_microns: null
+multilabel: false
+image_resolution: 224
+subset:
+  train: -1
+  val: -1
+  test: -1
+input_key: null
+sequence_length: null
+band_gsds: null
+defaults:
+- base_dataset
+dataset_name: tropical_cyclone
+band_ids:
+- 0
+
+INFO:root:[RegDataAugmentation: train] Sampling channels: [0]
+INFO:root:[RegDataAugmentation: train] Sampling channels: [0]
+computing stats for train
+Dataset len: 57138
+Mean: tensor([-0.0053])
+Std: tensor([0.9977])
+computing stats for val
+Dataset len: 13119
+Mean: tensor([0.0225])
+Std: tensor([1.0095])
+computing stats for test
+Dataset len: 44377
+Mean: tensor([-0.1498])
+Std: tensor([0.9530])

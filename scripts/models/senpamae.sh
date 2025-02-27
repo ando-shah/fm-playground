@@ -36,23 +36,18 @@ all_tasks=(
 
     # #SenPaMae
 
-    "base/senpamae_13b linear_probe geobench_eurosat_13b 512" #fix
-    "base/senpamae_12b linear_probe geobench_eurosat_12b 512" 
-    "base/senpamae_rgb linear_probe resisc45 512"
-    "base/senpamae_12b linear_probe benv2_s2_12b 512" 
-    "base/senpamae_6b linear_probe geobench_forestnet_6b 512"
-    "base/senpamae_8b linear_probe fmow_8b 512"
-    "base/senpamae_rgb linear_probe fmow_rgb 512"
+    "base/senpamae linear_probe geobench_eurosat_13b 512" #fix
+    "base/senpamae linear_probe resisc45 512"
+    "base/senpamae linear_probe benv2_s2_12b 512" 
+    "base/senpamae linear_probe geobench_forestnet_6b 512"
+    "base/senpamae linear_probe fmow_8b 512"
+    "base/senpamae linear_probe fmow_rgb 512"
 
 
-    "base/senpamae_10b linear_probe benv2_s2_10b 512"
-    "base/senpamae_6b linear_probe geobench_forestnet_6b 512"
-    "base/senpamae_10b linear_probe geobench_brick_kiln_10b 512"
-    "base/senpamae_rgb linear_probe linear_probe geobench_pv4ger_cls 512"
-    'base/senpamae_rgb linear_probe fmow_rgb 512' 
-    'base/senpamae_10b linear_probe geobench_so2sat_10b 512'
-    'base/senpamae_10b linear_probe geobench_eurosat_10b 512'
-    'base/senpamae_8b linear_probe corine_sd 512' 
+    "base/senpamae linear_probe geobench_brick_kiln_10b 512"
+    "base/senpamae linear_probe linear_probe geobench_pv4ger_cls 512"
+    'base/senpamae linear_probe geobench_so2sat_10b 512'
+    'base/senpamae linear_probe corine_sd 512' 
 
     'base/anysat_s2 linear_probe geobench_eurosat_10b 128'
     'base/anysat_s2 linear_probe geobench_so2sat_10b 128'

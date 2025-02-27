@@ -3,7 +3,6 @@ embed_dim: 768
 image_resolution: 144
 
 pretrained_path: ${oc.env:MODEL_WEIGHTS_DIR}/senpamae_doubleParameterEmbedding.pt
-num_channels: 4
 
 segm_blk_indices: [4,6,10,11]
 accel_cls_blk_indices: [8, 9, 10, 11]

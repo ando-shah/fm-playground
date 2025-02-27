@@ -16,3 +16,10 @@ _optims:
     betas: [0.9, 0.999]
     eps: 1e-8
     weight_decay: 0.01
+  
+  adam:
+    id: Adam
+    display_name: adam
+    betas: [0.9, 0.999]
+    eps: 1e-8
+    weight_decay: 0.01

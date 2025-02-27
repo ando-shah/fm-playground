@@ -92,7 +92,9 @@ def main(cfg: DictConfig):
         # Scale learning rate
         # assert (cfg.lr == -1) != (cfg.base_lr == -1), "either lr or base_lr should be set"
         assert not 'base_lr' in cfg, 'base_lr is legacy, only provide lr'
-        cfg.inputted_lr = cfg.lr
+        with open_dict(cfg):
+            cfg.inputted_lr = cfg.lr
+        
         cfg.lr = cfg.lr * cfg.batch_size / 256 * cfg.num_gpus
 
     # get metrics

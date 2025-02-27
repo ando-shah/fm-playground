@@ -4,7 +4,7 @@ export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
 fastdevrun=true
-exp_base_name=senpamae_test
+exp_base_name=panopticon_test
 
 
 # Parse CUDA device number from command line (default to 0)
@@ -22,12 +22,7 @@ else
     task_ids=("$@")
 fi
 
-bsz_brick_kiln=100
-bsz_eurosat=1024
-bsz_pv4ger=512
-bsz_so2sat=1024
-bsz_benv2=512
-bsz_forestnet=512
+
 
 
 all_tasks=(
@@ -36,28 +31,37 @@ all_tasks=(
 
     # #SenPaMae
 
-    "base/senpamae linear_probe corine_1b 2048 "
+    "base/senpamae linear_probe corine_1b 2048"
+    "base/senpamae linear_probe corine_202b 160"
 
-    "base/senpamae linear_probe geobench_eurosat_13b 512" #fix
-    "base/senpamae linear_probe resisc45 512"
-    "base/senpamae linear_probe benv2_s2_12b 512" 
-    "base/senpamae linear_probe geobench_forestnet_6b 512"
-    "base/senpamae linear_probe fmow_8b 512"
-    "base/senpamae linear_probe fmow_rgb 512"
+    'base/panopticon linear_probe corine_10b 350' 
+    "base/panopticon linear_probe corine_202b 15"
+    "base/panopticon linear_probe corine_50b 75"
+
+    "base/senpamae linear_probe corine_50b 400"
+
+    "base/panopticon linear_probe geobench_eurosat_13b 400"
+    "base/panopticon linear_probe resisc45 400"
+    "base/panopticon linear_probe benv2_s2_12b 400" 
+    "base/panopticon linear_probe benv2_s1 512"
+    "base/panopticon linear_probe geobench_forestnet_6b 512"
+    "base/panopticon linear_probe fmow_8b 400" #OOM at 512
+    "base/panopticon linear_probe fmow_rgb 512"
 
 
-    "base/senpamae linear_probe geobench_brick_kiln_10b 512"
-    "base/senpamae linear_probe linear_probe geobench_pv4ger_cls 512"
-    'base/senpamae linear_probe geobench_so2sat_10b 512'
-    'base/senpamae linear_probe corine_sd 512' 
 
-    'base/anysat_s2 linear_probe geobench_eurosat_10b 128'
-    'base/anysat_s2 linear_probe geobench_so2sat_10b 128'
-    'base/anysat_spot linear_probe geobench_pv4ger_cls 128' #fail
-    'base/anysat_s2 linear_probe geobench_brick_kiln_10b 128'
-    'base/anysat_l7 linear_probe geobench_forestnet_6b 128' #fail
-    'base/anysat_s2 linear_probe benv2_s2_10b 128'
-    'base/anysat_s1-asc linear_probe benv2_s1 128' #fail
+    "base/panopticon linear_probe geobench_brick_kiln_10b 512"
+    "base/panopticon linear_probe linear_probe geobench_pv4ger_cls 512"
+    'base/panopticon linear_probe geobench_so2sat_10b 512'
+    
+
+    'base/panopticon linear_probe geobench_eurosat_10b 128'
+    'base/panopticon linear_probe geobench_so2sat_10b 128'
+    'base/panopticon linear_probe geobench_pv4ger_cls 128' #fail
+    'base/panopticon linear_probe geobench_brick_kiln_10b 128'
+    'base/panopticon linear_probe geobench_forestnet_6b 128' #fail
+    'base/panopticon linear_probe benv2_s2_10b 128'
+    'base/panopticon linear_probe benv2_s1 128' #fail
 
     # #DOFA
     # "base/dofa linear_probe benv2_s2_12b ${bsz_benv2}"
@@ -79,7 +83,6 @@ warmup_epochs=0
 
 ########## defaults both
 epochs=50
-batch_size=500
 num_workers=8
 check_val_every_n_epoch=10
 
@@ -114,8 +117,13 @@ for task_id in "${task_ids[@]}"; do
         "
 
     if $fastdevrun; then
-        echo "fastdevrun!"
-        cmd="$cmd epochs=1 trainer.check_val_every_n_epoch=1 overwrite=True"
+        # echo "fastdevrun!"
+        echo "fastdevrun 'bsz'!"
+        cmd="$cmd epochs=5 batch_size=$batch_size trainer.check_val_every_n_epoch=1"
+        s=$((batch_size * 10))
+        echo $s
+        cmd="$cmd dataset.subset.train=$s dataset.subset.val=$s dataset.subset.test=$s"
+        lrs_partial_ft="0.1"
     else
         cmd="$cmd epochs=$epochs batch_size=$batch_size trainer.check_val_every_n_epoch=$check_val_every_n_epoch"
     fi

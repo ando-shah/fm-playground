@@ -368,6 +368,12 @@ class CorineDataset(BaseDataset):
         train_transform = ClsDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
         eval_transform = ClsDataAugmentation(split="test", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
 
+        if self.config.band_ids is not None: # so we dont have to type in the band ids manually
+            self.config.senpamae_channels = self.config.band_ids
+            self.config.band_gsds = [30] * len(self.config.band_ids)
+        else: # using all bands
+            self.config.senpamae_channels = list(range(0, self.config.num_channels))
+            self.config.band_gsds = [30] * self.config.num_channels
 
         # Override the config with the transformed channel ids
         output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation

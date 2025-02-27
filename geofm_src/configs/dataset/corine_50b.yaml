@@ -11,3 +11,4 @@ band_ids: [2, 7, 8, 14, 18, 23, 24, 28, 34, 37, 42, 46, 50, 54, 59, 60, 67, 71, 
 data_path: ${oc.env:DATASETS_DIR}/spectral_earth
 image_resolution: 128
 multilabel: true
+senpamae_srf_name: rfs_enmap_recon.npy

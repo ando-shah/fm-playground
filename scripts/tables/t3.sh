@@ -4,7 +4,15 @@ export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
 fastdevrun=true
-exp_base_name=t3
+exp_base_name=senpamae_test
+
+
+# Parse CUDA device number from command line (default to 0)
+cuda_device=0
+if [[ "$1" == "--device" || "$1" == "-d" ]]; then
+    cuda_device="$2"
+    shift 2  # Remove these two arguments from $@
+fi
 
 # If no arguments provided, run all tasks
 if [ $# -eq 0 ]; then
@@ -14,43 +22,54 @@ else
     task_ids=("$@")
 fi
 
+bsz_brick_kiln=100
+bsz_eurosat=1024
+bsz_pv4ger=512
+bsz_so2sat=1024
+bsz_benv2=512
+bsz_forestnet=512
+
+
 all_tasks=(
     # 'base/anysat_s2 linear_probe benv2_s2_10b'
     #DOFA: BENv2
     #dinov2
-    'base/dinov2 linear_probe geobench_pv4ger_cls 2048'
+    # "base/dinov2 linear_probe geobench_pv4ger_cls ${bsz_pv4ger}"
 
-    #SoftCon
-    # 'base/softcon_13b linear_probe benv2_s2_13b 2048' # TODO: add this
-    'base/softcon linear_probe geobench_brick_kiln_13b 2048'
-    'base/softcon linear_probe geobench_eurosat_13b 2048'
+    # #SoftCon
+    # # 'base/softcon_13b linear_probe benv2_s2_13b 2048' # TODO: add this
+    # "base/softcon_13b linear_probe geobench_brick_kiln_13b ${bsz_brick_kiln}"
+    # "base/softcon_13b linear_probe geobench_eurosat_13b ${bsz_eurosat}"
 
-    #AnySat TODO
-    # 'base/anysat_s2 linear_probe geobench_pv4ger_cls 2048'
+    # #AnySat TODO
+    # # "base/anysat_s2 linear_probe geobench_pv4ger_cls ${bsz_pv4ger}"
 
-    # CROMA
-    'base/croma_s2 linear_probe benv2_s2_12b 2048'
-    'base/croma_s2 linear_probe geobench_brick_kiln_12b 2048'
-    'base/croma_s2 linear_probe geobench_eurosat_12b 2048'
+    # # CROMA
+    # "base/croma_s2 linear_probe benv2_s2_12b ${bsz_benv2}"
+    # "base/croma_s2 linear_probe geobench_brick_kiln_12b ${bsz_brick_kiln}"
+    # "base/croma_s2 linear_probe geobench_eurosat_12b ${bsz_eurosat}"
     
-    #Galileo: TODO Test first
-    'base/galileo_s2 linear_probe benv2_s2_10b 32' # Test
-    'base/galileo_s2 linear_probe geobench_brick_kiln_10b 2048'
-    'base/galileo_s2 linear_probe geobench_eurosat_10b 2048'
-    'base/galileo_s2 linear_probe geobench_so2sat_10b 2048'
+    # #Galileo: TODO Test first
+    # 'base/galileo_s2 linear_probe benv2_s2_10b 400' # Test
+    # 'base/galileo_s2 linear_probe geobench_brick_kiln_10b 400'
+    # 'base/galileo_s2 linear_probe geobench_eurosat_10b 400'
+    # 'base/galileo_s2 linear_probe geobench_so2sat_10b 400'
 
-    #SenPaMae
-    'base/senpamae linear_probe benv2_s2_4b 2048'
-    
-    
-
-    #DOFA: Corine
-    'base/dofa linear_probe corine_1b 4096'
-    'base/dofa linear_probe corine_4b 4096'
-    'base/dofa linear_probe corine_10b 3000'
-    'base/dofa linear_probe corine_21b 2048'
-    'base/dofa linear_probe corine_50b 1024'
-    'base/dofa linear_probe corine_202b 400'
+    # #SenPaMae
+    "base/senpamae_10b linear_probe benv2_s2_10b 512"
+    # "base/senpamae linear_probe geobench_forestnet_4b 512"
+    "base/senpamae_10b linear_probe geobench_brick_kiln_10b 512"
+    # "base/senpamae linear_probe geobench_so2sat_4b 512"
+    # "base/senpamae linear_probe geobench_eurosat_4b 512"
+    # 'base/senpamae linear_probe fmow_4b 512' #remove for T3
+    'base/senpamae_8b linear_probe corine_sd 512' #remove for T3
+    # #DOFA
+    # "base/dofa linear_probe benv2_s2_12b ${bsz_benv2}"
+    # "base/dofa linear_probe geobench_forestnet_6b ${bsz_forestnet}"
+    # "base/dofa linear_probe geobench_brick_kiln_12b ${bsz_brick_kiln}"
+    # "base/dofa linear_probe geobench_pv4ger_cls ${bsz_pv4ger}"  # Fixed missing $ before {
+    # "base/dofa linear_probe geobench_eurosat_12b ${bsz_eurosat}"
+    # "base/dofa linear_probe geobench_so2sat_10b ${bsz_so2sat}"  # Fixed missing $ before {
 )
 
 ########## linear probe defaults
@@ -67,6 +86,10 @@ epochs=50
 batch_size=500
 num_workers=8
 check_val_every_n_epoch=10
+
+export CUDA_VISIBLE_DEVICES=$cuda_device
+
+# export CUDA_LAUNCH_BLOCKING=1
 
 # Loop through each task ID provided
 for task_id in "${task_ids[@]}"; do
@@ -88,7 +111,7 @@ for task_id in "${task_ids[@]}"; do
         \
         epochs=$epochs \
         \
-        batch_size=$batch_size \
+        ++batch_size=$batch_size \
         num_workers=$num_workers \
         num_gpus=1 \
         seed=21 \
@@ -96,7 +119,7 @@ for task_id in "${task_ids[@]}"; do
 
     if $fastdevrun; then
         echo "fastdevrun!"
-        cmd="$cmd epochs=1 batch_size=64 trainer.check_val_every_n_epoch=1"
+        cmd="$cmd epochs=1 batch_size=64 trainer.check_val_every_n_epoch=1 overwrite=True"
     else
         cmd="$cmd epochs=$epochs batch_size=$batch_size trainer.check_val_every_n_epoch=$check_val_every_n_epoch"
     fi
@@ -112,6 +135,7 @@ for task_id in "${task_ids[@]}"; do
     echo "Batch Size: $batch_size"
     echo "Output Dir: $output_dir"
     echo "Check Val Every N Epoch: $check_val_every_n_epoch"
+    echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
     echo "\n\n************************************************\n\n"
 
     if [ $training_mode == 'linear_probe' ]; then
@@ -150,3 +174,7 @@ done
 #Run like this:
 # ./t2.sh 0 1 2  # Run tasks 0, 1, and 2
 # ./t2.sh {0..3}  # Run tasks 0 through 3
+# ./t3.sh - Uses CUDA device 0 and runs all tasks
+# ./t3.sh --device 1 - Uses CUDA device 1 and runs all tasks
+# ./t3.sh -d 2 0 1 - Uses CUDA device 2 and runs tasks 0 and 1
+# ./t3.sh 0 1 2 - Uses default CUDA device 0 and runs tasks 0, 1, and 2

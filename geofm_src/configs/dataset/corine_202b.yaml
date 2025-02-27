@@ -9,3 +9,4 @@ num_channels: 202
 data_path: ${oc.env:DATASETS_DIR}/spectral_earth
 image_resolution: 128
 multilabel: true
+senpamae_srf_name: rfs_enmap_recon.npy

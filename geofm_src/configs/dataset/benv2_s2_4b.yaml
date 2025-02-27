@@ -10,7 +10,7 @@ senpamae_channels: #senpamae SRF has only 10 channels (S2-10/20m), so indexes be
   - 0
   - 1
   - 6
-
+senpamae_srf_name: rfs_sentinel2_a.npy
 #above:
 # mapping RGB,NIR -> S2-10/20m
 # B4 -> B4 [2] (red)

@@ -32,17 +32,36 @@ bsz_forestnet=512
 
 all_tasks=(
     
+    # 'base/dofa linear_probe hyperview_10b 64'
 
     # #SenPaMae
+
+    "base/senpamae_13b linear_probe geobench_eurosat_13b 512" #fix
+    "base/senpamae_12b linear_probe geobench_eurosat_12b 512" 
+    "base/senpamae_rgb linear_probe resisc45 512"
+    "base/senpamae_12b linear_probe benv2_s2_12b 512" 
+    "base/senpamae_6b linear_probe geobench_forestnet_6b 512"
+    "base/senpamae_8b linear_probe fmow_8b 512"
+    "base/senpamae_rgb linear_probe fmow_rgb 512"
+
+
     "base/senpamae_10b linear_probe benv2_s2_10b 512"
     "base/senpamae_6b linear_probe geobench_forestnet_6b 512"
     "base/senpamae_10b linear_probe geobench_brick_kiln_10b 512"
-    "base/senpamae_6b linear_probe geobench_forestnet_6b 512"
     "base/senpamae_rgb linear_probe linear_probe geobench_pv4ger_cls 512"
     'base/senpamae_rgb linear_probe fmow_rgb 512' 
-    'base/senpamae_10b geobench_so2sat_10b 512'
+    'base/senpamae_10b linear_probe geobench_so2sat_10b 512'
     'base/senpamae_10b linear_probe geobench_eurosat_10b 512'
     'base/senpamae_8b linear_probe corine_sd 512' 
+
+    'base/anysat_s2 linear_probe geobench_eurosat_10b 128'
+    'base/anysat_s2 linear_probe geobench_so2sat_10b 128'
+    'base/anysat_spot linear_probe geobench_pv4ger_cls 128' #fail
+    'base/anysat_s2 linear_probe geobench_brick_kiln_10b 128'
+    'base/anysat_l7 linear_probe geobench_forestnet_6b 128' #fail
+    'base/anysat_s2 linear_probe benv2_s2_10b 128'
+    'base/anysat_s1-asc linear_probe benv2_s1 128' #fail
+
     # #DOFA
     # "base/dofa linear_probe benv2_s2_12b ${bsz_benv2}"
     # "base/dofa linear_probe geobench_forestnet_6b ${bsz_forestnet}"
@@ -99,7 +118,7 @@ for task_id in "${task_ids[@]}"; do
 
     if $fastdevrun; then
         echo "fastdevrun!"
-        cmd="$cmd epochs=1 batch_size=64 trainer.check_val_every_n_epoch=1 overwrite=True"
+        cmd="$cmd epochs=1 trainer.check_val_every_n_epoch=1 overwrite=True"
     else
         cmd="$cmd epochs=$epochs batch_size=$batch_size trainer.check_val_every_n_epoch=$check_val_every_n_epoch"
     fi

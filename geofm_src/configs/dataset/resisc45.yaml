@@ -13,3 +13,10 @@ wavelengths_sigma_nm: [16, 16, 16]
 image_resolution: 224
 multilabel: false
 
+#hacky defaults
+band_gsds: [10, 10, 10]
+senpamae_channels:
+  - 3
+  - 2
+  - 1
+senpamae_srf_name: rfs_sentinel2_a_13b.npy

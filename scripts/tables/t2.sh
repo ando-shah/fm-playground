@@ -3,9 +3,9 @@ export $(cat /home/ando/fm-playground/.env)
 export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
-fastdevrun=no
-exp_base_name=t2_v3_test
-overwrite=False
+fastdevrun=bsz
+exp_base_name=t3.0
+overwrite=True
 
 
 # Parse CUDA device number from command line (default to 0)
@@ -27,75 +27,30 @@ fi
 bsz_benv2=512
 
 #train percent
-corine_train_percent=1.0
+corine_train_percent=0.1
 benv2_train_percent=0.05 #same size as corine ~ 8000 samples
 eurosat_train_percent=1.0
 
 all_tasks=(
 
-    #DOFA: Corine
-    "base/dofa linear_probe corine_1b 3000 ${corine_train_percent}"
-    "base/senpamae linear_probe corine_1b 2048 ${corine_train_percent}"
-    "base/panopticon linear_probe corine_1b 800 ${corine_train_percent}"
+    #Corine-Modis
+    "base/croma_pe partial_finetune corine_modis 500 ${corine_train_percent}"
+    "base/softcon_pe partial_finetune corine_modis 500 ${corine_train_percent}"
+    "base/anysat_naip_pe partial_finetune corine_modis 100 ${corine_train_percent}"
+    # "base/galileo_pe partial_finetune corine_modis 100 ${corine_train_percent}" TBD
+    "base/dofa linear_probe corine_modis 500 ${corine_train_percent}"
+    "base/senpamae linear_probe corine_modis 200 ${corine_train_percent}"
+    "base/panopticon linear_probe corine_modis 180 ${corine_train_percent}"
 
-    "base/dofa linear_probe corine_4b 2048 ${corine_train_percent}"
-    "base/senpamae linear_probe corine_4b 2048 ${corine_train_percent}"
-    "base/panopticon linear_probe corine_4b 500 ${corine_train_percent}"
+    #Corine-SD
+    "base/croma_pe partial_finetune corine_modis 500 ${corine_train_percent}"
+    "base/softcon_pe partial_finetune corine_sd 500 ${corine_train_percent}"
+    "base/anysat_naip_pe partial_finetune corine_sd 100 ${corine_train_percent}"
+    "base/dofa linear_probe corine_sd 1000 ${corine_train_percent}"
+    "base/senpamae linear_probe corine_sd 700 ${corine_train_percent}"
+    "base/panopticon linear_probe corine_sd 500 ${corine_train_percent}"
 
-    "base/dofa linear_probe corine_10b 2048 ${corine_train_percent}"
-    "base/senpamae linear_probe corine_10b 2048 ${corine_train_percent}"
-    "base/panopticon linear_probe corine_10b 350 ${corine_train_percent}"
     
-    "base/dofa linear_probe corine_21b 1024 ${corine_train_percent}"
-    "base/senpamae linear_probe corine_21b 2048 ${corine_train_percent}"
-    "base/panopticon linear_probe corine_21b 150 ${corine_train_percent}"
-
-    "base/dofa linear_probe corine_50b 400 ${corine_train_percent}" #anything more than 512 is throttled by CPU RAM
-    "base/senpamae linear_probe corine_50b 400 ${corine_train_percent}"
-    "base/panopticon linear_probe corine_50b 75 ${corine_train_percent}"
-
-    # low prio
-    "base/dofa linear_probe corine_202b 100 ${corine_train_percent}"
-    "base/senpamae linear_probe corine_202b 100 ${corine_train_percent}"
-    "base/panopticon linear_probe corine_202b 15 ${corine_train_percent}"
-
-    # Corine kNN :(
-    # "base/dofa knn corine_1b 10000 ${corine_train_percent}"
-    # "base/senpamae knn corine_1b 8000 ${corine_train_percent}"
-    # "base/panopticon knn corine_1b 2400 ${corine_train_percent}"
-
-    # "base/dofa knn corine_4b 5000 ${corine_train_percent}"
-    # "base/senpamae knn corine_4b 3000 ${corine_train_percent}"
-    # "base/panopticon knn corine_4b 1000 ${corine_train_percent}"
-
-    # "base/dofa knn corine_10b 3000 ${corine_train_percent}"
-    # "base/senpamae knn corine_10b 1000 ${corine_train_percent}"
-    # "base/panopticon knn corine_10b 500 ${corine_train_percent}"
-    
-    # "base/dofa knn corine_21b 1024 ${corine_train_percent}"
-    # "base/senpamae knn corine_21b 1024 ${corine_train_percent}"
-    # "base/panopticon knn corine_21b 150 ${corine_train_percent}"
-
-    # "base/dofa knn corine_50b 800 ${corine_train_percent}" #anything more than 512 is throttled by CPU RAM
-    # "base/senpamae knn corine_50b 600 ${corine_train_percent}"
-    # "base/panopticon knn corine_50b 100 ${corine_train_percent}"
-    
-    # Eurosat kNN
-    "base/dofa knn geobench_eurosat_1b 30000 ${eurosat_train_percent}"
-    "base/senpamae knn geobench_eurosat_1b 30000 ${eurosat_train_percent}"
-    "base/panopticon knn geobench_eurosat_1b 20000 ${eurosat_train_percent}"
-
-    "base/dofa knn geobench_eurosat_4b 20000 ${eurosat_train_percent}"
-    "base/senpamae knn geobench_eurosat_4b 20000 ${eurosat_train_percent}"
-    "base/panopticon knn geobench_eurosat_4b 1000 ${eurosat_train_percent}"
-
-    "base/dofa knn geobench_eurosat_10b 15000 ${eurosat_train_percent}"
-    "base/senpamae knn geobench_eurosat_10b 1000 ${eurosat_train_percent}"
-    "base/panopticon knn geobench_eurosat_10b 400 ${eurosat_train_percent}"
-
-    "base/dofa knn geobench_eurosat_12b 15000 ${eurosat_train_percent}"
-    "base/senpamae knn geobench_eurosat_12b 1000 ${eurosat_train_percent}"
-    "base/panopticon knn geobench_eurosat_12b 300 ${eurosat_train_percent}"
 
     #BENv2: 10%
 
@@ -133,9 +88,9 @@ warmup_epochs=0
 
 ########## defaults both
 
-epochs=1
+epochs=50
 num_workers=4
-check_val_every_n_epoch=1
+check_val_every_n_epoch=5
 
 
 export CUDA_VISIBLE_DEVICES=$cuda_device

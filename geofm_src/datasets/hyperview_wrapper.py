@@ -277,15 +277,16 @@ class RegDataAugmentation(torch.nn.Module):
         self.output_chn_ids = None
         
         # setup HS specific augmentations
-        if band_ids is not None:
+        if target_chn_ids is not None:
+            chn_sim = ChannelSimulator(source_chn_ids=source_chn_ids, target_chn_ids=target_chn_ids)
+            self.output_chn_ids = target_chn_ids
+        elif band_ids is not None:
             chn_sample = ChannelSampler(band_ids)
             if source_chn_ids is not None:
                 self.output_chn_ids = source_chn_ids[band_ids]
             else:
                 raise ValueError("[ClsDataAugmentation] source_chn_ids must be provided if band_ids are provided")
-        elif target_chn_ids is not None:
-            chn_sim = ChannelSimulator(source_chn_ids=source_chn_ids, target_chn_ids=target_chn_ids)
-            self.output_chn_ids = target_chn_ids
+
         else:
             self.output_chn_ids = source_chn_ids
 
@@ -293,22 +294,22 @@ class RegDataAugmentation(torch.nn.Module):
 
 
         if split == "train":
-            if band_ids is not None:
-                print(f'[ClsDataAugmentation: train] Sampling channels: {band_ids}')
-                self.transforms.append(chn_sample)
-            elif target_chn_ids is not None:
+            if target_chn_ids is not None:
                 print(f'[ClsDataAugmentation: train] Simulating channels: {target_chn_ids}')
                 self.transforms.append(chn_sim)
+            elif band_ids is not None:
+                print(f'[ClsDataAugmentation: train] Sampling channels: {band_ids}')
+                self.transforms.append(chn_sample)
             else:
                 pass
             self.transforms.extend([rcrop, flipH, flipV])
         else:
-            if band_ids is not None:
-                print(f'[ClsDataAugmentation: val/test] Sampling channels: {band_ids}')
-                self.transforms.append(chn_sample)
-            elif target_chn_ids is not None:
+            if target_chn_ids is not None:
                 print(f'[ClsDataAugmentation: val/test] Simulating channels: {target_chn_ids}')
                 self.transforms.append(chn_sim)
+            elif band_ids is not None:
+                print(f'[ClsDataAugmentation: val/test] Sampling channels: {band_ids}')
+                self.transforms.append(chn_sample)
             else:
                 pass
 
@@ -335,6 +336,12 @@ class HyperviewDataset(BaseDataset):
         train_transform = RegDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
         eval_transform  = RegDataAugmentation(split="test", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
 
+        if self.config.band_ids is not None: # so we dont have to type in the band ids manually
+            self.config.senpamae_channels = self.config.band_ids
+            self.config.band_gsds = [2] * len(self.config.band_ids)
+        else: # using all bands
+            self.config.senpamae_channels = list(range(0, self.config.num_channels))
+            self.config.band_gsds = [2] * self.config.num_channels
 
         # Override the config with the transformed channel ids
         output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation

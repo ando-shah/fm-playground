@@ -312,37 +312,37 @@ class ClsDataAugmentation(torch.nn.Module):
         self.output_chn_ids = None
         
         # setup HS specific augmentations
-        if band_ids is not None:
+        if target_chn_ids is not None:
+            chn_sim = ChannelSimulator(source_chn_ids=source_chn_ids, target_chn_ids=target_chn_ids)
+            self.output_chn_ids = target_chn_ids
+        elif band_ids is not None:
             chn_sample = ChannelSampler(band_ids)
             if source_chn_ids is not None:
                 self.output_chn_ids = source_chn_ids[band_ids]
             else:
                 raise ValueError("[ClsDataAugmentation] source_chn_ids must be provided if band_ids are provided")
-        elif target_chn_ids is not None:
-            chn_sim = ChannelSimulator(source_chn_ids=source_chn_ids, target_chn_ids=target_chn_ids)
-            self.output_chn_ids = target_chn_ids
         else:
             self.output_chn_ids = source_chn_ids
 
         self.transforms = []
         if split == "train":
-            if band_ids is not None:
-                print(f'[ClsDataAugmentation: train] Sampling channels: {band_ids}')
-                self.transforms.append(chn_sample)
-            elif target_chn_ids is not None:
+            if target_chn_ids is not None:
                 print(f'[ClsDataAugmentation: train] Simulating channels: {target_chn_ids}')
                 self.transforms.append(chn_sim)
+            elif band_ids is not None:
+                print(f'[ClsDataAugmentation: train] Sampling channels: {band_ids}')
+                self.transforms.append(chn_sample)
             else:
                 pass
             
             self.transforms.extend([rcrop, flipH, flipV])
         else:
-            if band_ids is not None:
-                print(f'[ClsDataAugmentation: val/test] Sampling channels: {band_ids}')
-                self.transforms.append(chn_sample)
-            elif target_chn_ids is not None:
+            if target_chn_ids is not None:
                 print(f'[ClsDataAugmentation: val/test] Simulating channels: {target_chn_ids}')
                 self.transforms.append(chn_sim)
+            elif band_ids is not None:
+                print(f'[ClsDataAugmentation: val/test] Sampling channels: {band_ids}')
+                self.transforms.append(chn_sample)
             else:
                 pass
 
@@ -379,7 +379,6 @@ class CorineDataset(BaseDataset):
         output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
         if output_chn_ids is not None:
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
-            self.config['wavelengths_mean_microns'] = [x/1e3 for x in self.config['wavelengths_mean_nm']]
             self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 
         dataset_train = SpectralEarthDataset(

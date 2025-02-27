@@ -42,6 +42,8 @@ multilabel_classification:
   - id: MultiLabelF1Score
     average: macro
 
+  ckpt_monitor: val/MulLabAvergPrec_micro
+
 knn:
   val:
   - id: MulticlassAccuracy

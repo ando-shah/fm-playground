@@ -21,7 +21,7 @@ classification:
     average: macro
 
   ckpt_monitor: val/acc_top-1_micro
-
+  ckpt_monitor_higher_is_better: true
 
 multilabel_classification:
 
@@ -43,6 +43,7 @@ multilabel_classification:
     average: macro
 
   ckpt_monitor: val/MulLabAvergPrec_micro
+  ckpt_monitor_higher_is_better: true
 
 knn:
   val:
@@ -69,6 +70,9 @@ regression:
   - id: MSE
   - id: RMSE
   - id: MAE
+
+  ckpt_monitor: val/MSE
+  ckpt_monitor_higher_is_better: false
 
 segmentation: 
 

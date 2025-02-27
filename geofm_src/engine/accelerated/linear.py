@@ -400,7 +400,7 @@ def run_eval_linear(
     criterion_cfg = {'id': 'CrossEntropyLoss'},
     optim_cfg = {'id': 'SGD', 'momentum': 0.9, 'weight_decay': 0},
 
-    val_monitor='acc_top-1_micro', # corresponds to str of above val_metric
+    val_monitor='_not_specified', # corresponds to str of above val_metric
     val_monitor_higher_is_better=True,
 
     resume=True,

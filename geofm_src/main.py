@@ -270,6 +270,8 @@ def main(cfg: DictConfig):
                 criterion_cfg = cfg.task_kwargs.criterion,
                 val_metrics = cfg.task_kwargs.val,
                 optim_cfg=cfg.optim,
+                val_monitor = cfg.task_kwargs.ckpt_monitor,
+                val_monitor_higher_is_better = cfg.task_kwargs.ckpt_monitor_higher_is_better,
             )
 
             # process loss file

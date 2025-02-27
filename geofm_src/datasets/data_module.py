@@ -13,8 +13,7 @@ class BenchmarkDataModule(LightningDataModule):
         self.seed = seed
 
     def setup(self, stage=None):
-        train, val, test = create_dataset(
-            self.dataset_config)
+        train, val, test = create_dataset(self.dataset_config)
         self.dataset_train = make_subset(train, self.dataset_config.subset.train, seed=self.seed)
         self.dataset_val = make_subset(val, self.dataset_config.subset.val, seed=self.seed)
         self.dataset_test = make_subset(test, self.dataset_config.subset.test, seed=self.seed)

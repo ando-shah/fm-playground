@@ -20,7 +20,7 @@ classification:
   - id: F1Score
     average: macro
 
-  ckpt_monitor: val/acc_top-1_micro
+  ckpt_monitor: acc_top-1_micro
   ckpt_monitor_higher_is_better: true
 
 multilabel_classification:
@@ -42,7 +42,7 @@ multilabel_classification:
   - id: MultiLabelF1Score
     average: macro
 
-  ckpt_monitor: val/MulLabAvergPrec_micro
+  ckpt_monitor: MulLabAvergPrec_micro
   ckpt_monitor_higher_is_better: true
 
 knn:
@@ -71,7 +71,7 @@ regression:
   - id: RMSE
   - id: MAE
 
-  ckpt_monitor: val/MSE
+  ckpt_monitor: MSE
   ckpt_monitor_higher_is_better: false
 
 segmentation: 
@@ -90,4 +90,4 @@ segmentation:
   - id: F1Score
     average: micro
 
-  ckpt_monitor: val/mIoU
+  ckpt_monitor: mIoU

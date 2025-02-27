@@ -20,7 +20,7 @@ class BigEarthNetv2(BigEarthNet):
     Automatic download not implemented, get data from below link.
     """
 
-    splits_metadata = {
+    splits_metadata = { # splits are in a column in metadata.parquet
         "train": {
             "url": "https://zenodo.org/records/10891137/files/metadata.parquet",
             "filename": "metadata.parquet",
@@ -88,11 +88,10 @@ class BigEarthNetv2(BigEarthNet):
             download=download,
             checksum=checksum,
         )
-
         self.class2idx_43 = {c: i for i, c in enumerate(self.class_sets[43])}
         self.class2idx_19 = {c: i for i, c in enumerate(self.class_sets[19])}
         # self._verify()
-        self.folders = self._load_folders()
+        # self.folders = self._load_folders() # this is also called in the parent class!
 
     def get_class2idx(self, label: str, level=19):
         assert level == 19 or level == 43, "level must be 19 or 43"
@@ -114,19 +113,34 @@ class BigEarthNetv2(BigEarthNet):
         dir_maps = self.metadata_locs["maps"]["directory"]
 
         self.metadata = pd.read_parquet(os.path.join(self.root, filename))
+        split_ = 'validation' if self.split == 'val' else self.split
+        self.metadata = self.metadata[self.metadata["split"] == split_]
 
-        def construct_folder_path(root, dir, patch_id, remove_last: int = 2):
-            tile_id = "_".join(patch_id.split("_")[:-remove_last])
-            return os.path.join(root, dir, tile_id, patch_id)
+        folder_file = os.path.join(self.root, f'{self.split}_folders.parquet')
+        if os.path.exists(folder_file):
+            print(f'[BigEarthNetv2] Loading folders from {folder_file}')
+            folders = pd.read_parquet(folder_file).reset_index(drop=True)
 
-        folders = [
-            {
-                "s1": construct_folder_path(self.root, dir_s1, row["s1_name"], 3),
-                "s2": construct_folder_path(self.root, dir_s2, row["patch_id"], 2),
-                "maps": construct_folder_path(self.root, dir_maps, row["patch_id"], 2),
-            }
-            for _, row in self.metadata.iterrows()
-        ]
+        else:
+            print(f'[BigEarthNetv2] Constructing folders and saving to {folder_file}')
+
+            def construct_folder_path(root, dir, patch_id, remove_last: int = 2):
+                tile_id = "_".join(patch_id.split("_")[:-remove_last])
+                return os.path.join(root, dir, tile_id, patch_id)
+
+            folders = [
+                {
+                    "s1": construct_folder_path(self.root, dir_s1, row["s1_name"], 3),
+                    "s2": construct_folder_path(self.root, dir_s2, row["patch_id"], 2),
+                    "maps": construct_folder_path(self.root, dir_maps, row["patch_id"], 2),
+                }
+                for _, row in self.metadata.iterrows()
+            ]
+
+            folders = pd.DataFrame(folders)
+            folders.to_parquet(folder_file)
+
+        folders = folders.to_dict(orient="records")
 
         return folders
 

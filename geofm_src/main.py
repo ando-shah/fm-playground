@@ -173,7 +173,7 @@ def main(cfg: DictConfig):
 
 
         # Callbacks
-        monitor = cfg.task_kwargs.ckpt_monitor
+        monitor = os.path.join('val',cfg.task_kwargs.ckpt_monitor)
         callbacks = [
             ModelCheckpoint(
                 dirpath=os.path.join(cfg.output_dir, "checkpoints"),

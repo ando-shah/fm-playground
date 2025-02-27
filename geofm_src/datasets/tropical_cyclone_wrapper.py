@@ -20,8 +20,8 @@ class RegDataAugmentation(torch.nn.Module):
         # input_std = torch.Tensor([0.23435517, 0.23392765, 0.23351675])
 
         # data already comes normalized between 0 and 1
-        mean = torch.Tensor([0.0])
-        std = torch.Tensor([1.0])
+        mean = torch.Tensor([74.52810919339])
+        std = torch.Tensor([60.44378695709062])
 
         self.target_mean = torch.Tensor([50.54925])
         self.target_std = torch.Tensor([26.836512])

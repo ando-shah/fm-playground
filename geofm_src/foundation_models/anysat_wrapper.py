@@ -8,12 +8,11 @@ logger = logging.getLogger()
 
 
 class AnySatWrapper(EvalModelWrapper):
-    def load_encoder(self, blk_indices):
+    def _load_encoder(self, blk_indices):
         self.encoder = torch.hub.load("gastruc/anysat", self.model_config.anysat_torchhub_id, pretrained=True, flash_attn=False)
 
         # Dont think there is a norm layer to be used here
         self.norm = nn.Identity()
-    
         
         # prepare hooks
         for idx in blk_indices:

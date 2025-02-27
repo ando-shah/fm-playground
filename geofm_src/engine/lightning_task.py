@@ -185,10 +185,6 @@ class LightningClsRegTask(LightningTask):
         else:
             raise ValueError(f"Invalid mode: {mode}")
 
-        # prepare norm
-        self.unfreeze(self.encoder.norm)
-        params_to_optimize += list(self.encoder.norm.parameters()) #TODO: norm added twice in full finetune?
-
         # prepare linear classifier
         self.unfreeze(self.linear_classifier)
         params_to_optimize += list(self.linear_classifier.parameters())

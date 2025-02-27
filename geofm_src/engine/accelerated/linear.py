@@ -64,8 +64,9 @@ class LinearClassifier(nn.Module):
             use_n_blocks, 
             pooling, 
             num_classes = -1, 
-            norm = None,
-            default_blocks_to_featurevec = None
+            norm: nn.Module = nn.Identity(),
+            default_blocks_to_featurevec = None,
+            use_additional_1dbatchnorm = False,
         ):
         super().__init__()
 
@@ -80,6 +81,8 @@ class LinearClassifier(nn.Module):
         self.linear = nn.Linear(out_dim, num_classes)
         self.linear.weight.data.normal_(mean=0.0, std=0.01)
         self.linear.bias.data.zero_()
+        if use_additional_1dbatchnorm:
+            self.linear = nn.Sequential(nn.BatchNorm1d(out_dim), self.linear)
 
     def forward(self, x_tokens_list):
         output = self.blocks_to_cls(x_tokens_list)
@@ -126,6 +129,7 @@ def setup_linear_classifiers(
         num_classes = -1, 
         norm = None,
         default_blocks_to_featurevec = None,    
+        use_additional_1dbatchnorm_list = [False, True],
     ):
     
     linear_classifiers_dict = nn.ModuleDict()
@@ -133,19 +137,21 @@ def setup_linear_classifiers(
     for n in n_last_blocks_list:
         for pool in pooling:
             for _lr in learning_rates:
-                lr = scale_lr(_lr, batch_size)
-                linear_classifier = LinearClassifier(
-                    sample_output, 
-                    use_n_blocks=n, 
-                    pooling=pool, 
-                    num_classes=num_classes, 
-                    default_blocks_to_featurevec=default_blocks_to_featurevec,
-                    norm=norm)
-                linear_classifier = linear_classifier.cuda()
-                linear_classifiers_dict[
-                    f"classifier_blocks_{n}_pooling_{pool}_lr_{lr:.5f}".replace(".", "_")
-                ] = linear_classifier
-                optim_param_groups.append({"params": linear_classifier.parameters(), "lr": lr})
+                for use_1dbn in use_additional_1dbatchnorm_list:
+                    lr = scale_lr(_lr, batch_size)
+                    linear_classifier = LinearClassifier(
+                        sample_output, 
+                        use_n_blocks=n, 
+                        pooling=pool, 
+                        num_classes=num_classes, 
+                        default_blocks_to_featurevec=default_blocks_to_featurevec,
+                        norm=norm,
+                        use_additional_1dbatchnorm=use_1dbn,)
+                    linear_classifier = linear_classifier.cuda()
+                    linear_classifiers_dict[
+                        f"blocks_{n}_pooling_{pool}_lr_{lr:.5f}_1dbn_{use_1dbn}".replace(".", "_")
+                    ] = linear_classifier
+                    optim_param_groups.append({"params": linear_classifier.parameters(), "lr": lr})
 
     linear_classifiers = AllClassifiers(linear_classifiers_dict)
     if distributed.is_enabled():
@@ -453,6 +459,7 @@ def run_eval_linear(
         training_num_classes,
         norm = feature_model.norm,
         default_blocks_to_featurevec = feature_model.default_blocks_to_featurevec,
+        use_additional_1dbatchnorm_list = heads_cfg.use_additional_1dbatchnorm_list
     )
     
     optimizer = build_optimizer(optim_param_groups, optim_cfg)

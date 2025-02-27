@@ -10,7 +10,7 @@ from einops import rearrange
 class SoftConWrapper(EvalModelWrapper):
     URL = "https://huggingface.co/wangyi111/softcon/resolve/main/{}"
 
-    def load_encoder(self, blk_indices): 
+    def _load_encoder(self, blk_indices): 
         model_config = self.model_config
 
         # load dino model

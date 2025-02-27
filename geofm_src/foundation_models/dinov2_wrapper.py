@@ -7,7 +7,7 @@ from torch import Tensor
 
 class DinoV2Wrapper(EvalModelWrapper):
 
-    def load_encoder(self, blk_indices):
+    def _load_encoder(self, blk_indices):
         print("BLK INDICES: ", blk_indices)
         self.encoder = torch.hub.load("facebookresearch/dinov2", self.model_config.dinov2_torchhub_id)
         self.norm = self.encoder.norm

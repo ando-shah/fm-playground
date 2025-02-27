@@ -1,6 +1,15 @@
 import torch.nn as nn
 from einops import rearrange 
 
+""" 
+Design decisions:
+- In alignment with dinov2, we freeze the EvalModelWrapper.norm. The norm is used
+    for different blocks to feature extractions. To account for potentially changing
+    inputs, engine=lightning always adds a (trainable) 1d-batchnorm in the linear head
+    and engine=accelerated tries heads both with and without such a norm (specifiable 
+    in the config).
+
+"""
 
 class EvalModelWrapper(nn.Module):
     def __init__(self, model_config, data_config): 
@@ -8,8 +17,13 @@ class EvalModelWrapper(nn.Module):
         self.model_config = model_config
         self.data_config = data_config
 
-
     def load_encoder(self, blk_indices):
+        self._load_encoder(blk_indices)
+        assert hasattr(self, "encoder"), "Encoder has not been loaded!"
+        assert hasattr(self, "norm"), "Normalization function has not been loaded!"
+        print(f'Loaded encoder with {len(blk_indices)} blocks and norm {self.norm}')
+
+    def _load_encoder(self, blk_indices):
         """ 
         Loads the encoder and prepares any functionality needed for extracting the 
         blocks index by blk_indices (e.g. register forward hooks) in get_blocks.

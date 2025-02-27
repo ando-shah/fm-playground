@@ -4,7 +4,7 @@ from geofm_src.engine.model import EvalModelWrapper
 
 class PanopticonWrapper(EvalModelWrapper):
 
-    def load_encoder(self, blk_indices):
+    def _load_encoder(self, blk_indices):
         self.encoder = torch.hub.load(
             '/home/hk-project-pai00028/tum_mhj8661/code/PanOpticOn',
             'panopticon_from_eval_config',

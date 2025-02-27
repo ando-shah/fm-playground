@@ -259,6 +259,7 @@ def main(cfg: DictConfig):
                 n_last_blocks_list = cfg.n_last_blocks_list,
                 pooling = cfg.pooling,
                 learning_rates = cfg.lr,
+                use_additional_1dbatchnorm_list = cfg.use_additional_1dbatchnorm_list,
             ))
 
             results_list = run_eval_linear(
@@ -311,7 +312,8 @@ def main(cfg: DictConfig):
                         params = dict(
                             blocks = cls.split('_')[2],
                             pooling = cls.split('_')[4],
-                            lr = float('.'.join(cls.split('_')[-2:])) ,)
+                            lr = float('.'.join(cls.split('_')[-4:-2])) ,
+                            use_1dbn = cls.split('_')[-1],)
                         mlflow.log_params(params)
 
                         for i in range(losses.shape[0]):

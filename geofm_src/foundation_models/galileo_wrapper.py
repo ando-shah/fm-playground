@@ -20,7 +20,7 @@ EXPECTED_CHANNELS = {
 
 
 class GalileoWrapper(EvalModelWrapper):
-    def load_encoder(self, blk_indices):
+    def _load_encoder(self, blk_indices):
         URL = "https://hf.co/nasaharvest/galileo/resolve/main/models/base/{}"
         pretrained_path = self.model_config.get("pretrained_path", None)
         print(f"PRETRAINED PATH: {pretrained_path}")

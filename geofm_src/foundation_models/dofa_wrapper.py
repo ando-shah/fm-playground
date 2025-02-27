@@ -13,7 +13,7 @@ from einops import rearrange
 class DofaWrapper(EvalModelWrapper):
     URL = "https://huggingface.co/earthflow/dofa/resolve/main/{}"
 
-    def load_encoder(self, blk_indices):
+    def _load_encoder(self, blk_indices):
 
         # build encoder
         size = self.model_config.size

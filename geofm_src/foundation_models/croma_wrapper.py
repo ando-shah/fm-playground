@@ -13,7 +13,7 @@ from geofm_src.engine.model import EvalModelWrapper
 class CromaWrapper(EvalModelWrapper):
     URL = "https://huggingface.co/antofuller/CROMA/resolve/main/{}"
 
-    def load_encoder(self, blk_indices):
+    def _load_encoder(self, blk_indices):
         model_config = self.model_config
 
         if model_config.get("pretrained_path", None):

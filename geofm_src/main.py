@@ -306,12 +306,13 @@ def main(cfg: DictConfig):
                 import mlflow
                 mlflow.set_tracking_uri(f"file:{os.path.join(os.environ['ODIR'], '_mlruns')}")
                 mlflow.set_experiment(os.path.join(experiment_name, run_name))
+                
                 for cls in classifiers:
                     with mlflow.start_run(run_name=cls):
-                        # example: classifier_blocks_4_pooling_default_lr_2_50000
+                        # example: blocks_4_pooling_default_lr_2_50000
                         params = dict(
-                            blocks = cls.split('_')[2],
-                            pooling = cls.split('_')[4],
+                            blocks = cls.split('_')[1],
+                            pooling = cls.split('_')[3],
                             lr = float('.'.join(cls.split('_')[-4:-2])) ,
                             use_1dbn = cls.split('_')[-1],)
                         mlflow.log_params(params)
@@ -319,6 +320,10 @@ def main(cfg: DictConfig):
                         for i in range(losses.shape[0]):
                             mlflow.log_metric(f'loss', losses.at[i,cls], step=losses.at[i, 'iteration'])
 
+                        # print('key', cls)
+                        if cls not in metrics_by_cls:
+                            print(f'Skipping {cls} (probably crashed because of high lr)')
+                            continue
                         for i, metrics in metrics_by_cls[cls].items():
                             if isinstance(i, int):
                                 for name, val in metrics.items():

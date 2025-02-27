@@ -10,20 +10,21 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=20        # default: 38
 #SBATCH --time=4:00:00
-#SBATCH --array=12-15
+#SBATCH --array=20,18
+##SBATCH --array=18-20,24-25
 
 ##### export env variables
 export $(cat /home/hk-project-pai00028/tum_mhj8661/code/fm-playground/.env) # horeka
 #####
 
 
-fastdevrun=no
-exp_base_name=t01
+fastdevrun=fast
+exp_base_name=debug_norm2
 
 all_tasks=(
 
-    # m-eurosat (50e = 0h15 (lp))
-    'base/dinov2 linear_probe geobench_eurosat_rgb 900'
+    # m-eurosat, 0-7 (50e = 0h15 (lp))
+    'base/dinov2 linear_probe geobench_eurosat_rgb 800'
     'base/croma_s2 linear_probe geobench_eurosat_12b 900'
     'base/softcon_13b linear_probe geobench_eurosat_13b 900'
     'base/anysat_s2 linear_probe geobench_eurosat_10b 900'
@@ -32,13 +33,13 @@ all_tasks=(
     'base/dofa linear_probe geobench_eurosat_13b 900'
     'base/panopticon_v2 linear_probe geobench_eurosat_13b 200'
 
-    # resisc45 (50e = 1h30 (lp))
+    # resisc45, 8-11 (50e = 1h30 (lp))
     'base/dinov2 linear_probe resisc45 900'
     'base/senpamae linear_probe resisc45 900'
     'base/dofa linear_probe resisc45 900'
     'base/panopticon_v2 linear_probe resisc45 400'
 
-    # benv2-s1 
+    # benv2-s1, 12-17
     'base/croma_s1 linear_probe benv2_s1 900'
     'base/softcon_2b linear_probe benv2_s1 900'
     'base/anysat_s1_asc linear_probe benv2_s1 900'
@@ -46,25 +47,25 @@ all_tasks=(
     'base/dofa linear_probe benv2_s1 900'
     'base/panopticon_v2 linear_probe benv2_s1 400'
 
-    # benv2-s2
-    'base/dinov2 linear_probe benv2_s2_rgb 900'
+    # benv2-s2, 18-25
+    'base/dinov2 linear_probe benv2_rgb 900'
     'base/croma_s2 linear_probe benv2_s2_12b 900'
-    'base/softcon_13b linear_probe benv2_s2_13b 900'
-    'base/anysat linear_probe benv2_s2_10b 900'
+    'base/softcon_13b linear_probe benv2_s2_13b 800'
+    'base/anysat_s2 linear_probe benv2_s2_10b 900'
     'galileo'
     'base/senpamae linear_probe benv2_s2_4b 900'
     'base/dofa linear_probe benv2_s2_12b 900'
     'base/panopticon_v2 linear_probe benv2_s2_12b 200'
 
-    # forestnet
+    # forestnet, 26-31
     'base/dinov2 linear_probe geobench_forestnet_rgb 900'
-    'base/anysat '
+    'base/anysat landsat???'
     'galileo'
     'base/senpamae linear_probe geobench_forestnet_6b 900'
     'base/dofa linear_probe geobench_forestnet_6b 900'
     'base/panopticon_v2 linear_probe geobench_forestnet_6b 200'
 
-    # fmow-wv
+    # fmow-wv, 32-34
     'base/senpamae linear_probe fmow_8b 900'
     'base/dofa linear_probe fmow_8b'
     'base/panopticon_v2 linear_probe fmow_8b'
@@ -83,10 +84,7 @@ all_tasks=(
 
 ########## linear probe defaults
 
-n_last_blocks_list='[1,4]'
-pooling='[avgpool,cls,default]'
-lrs_linear_probe='[1e-5,5e-5,1e-4,5e-4,1e-3,5e-3,1e-2,5e-2,0.1,0.5,1,3,5,10,20]'
-optim=adamw
+optim=sgd
 
 ########## pe linear probe (=partial finetune) defaults
 
@@ -95,10 +93,10 @@ warmup_epochs=0
 
 ########## defaults both
 
-epochs=100
+epochs=50
 num_workers=16
-check_val_every_n_epoch=15
-val_subset=0.25
+check_val_every_n_epoch=10
+val_subset=-1
 
 # epochs=10
 # num_workers=12
@@ -169,9 +167,6 @@ for task_id in "${task_ids[@]}"; do
     if [ $training_mode == 'linear_probe' ]; then
         
         cmd="$cmd \
-            +n_last_blocks_list=$n_last_blocks_list \
-            +pooling=$pooling \
-            +lr=$lrs_linear_probe
             +optim=\${_optims.$optim} \
             "
         echo $cmd

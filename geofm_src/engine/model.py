@@ -21,7 +21,7 @@ class EvalModelWrapper(nn.Module):
         self._load_encoder(blk_indices)
         assert hasattr(self, "encoder"), "Encoder has not been loaded!"
         assert hasattr(self, "norm"), "Normalization function has not been loaded!"
-        print(f'Loaded encoder with {len(blk_indices)} blocks and norm {self.norm}')
+        print(f'Loaded encoder with blocks {blk_indices} blocks and norm {self.norm}')
 
     def _load_encoder(self, blk_indices):
         """ 

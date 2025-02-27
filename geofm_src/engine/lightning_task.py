@@ -6,7 +6,7 @@ from geofm_src.util.misc import resize, seg_metric
 import torch.nn as nn
 from .model import EvalModelWrapper
 from einops import rearrange 
-
+from .base import LinearHead
 from torch import Tensor
 
 from geofm_src.engine.accelerated.utils.metrics import build_metric, build_criterion
@@ -137,9 +137,8 @@ class LightningClsRegTask(LightningTask):
         self.replace_pe = model_config.replace_pe
 
         self.criterion = build_criterion(args.task_kwargs.criterion)
-              
-        self.linear_classifier = nn.Linear(
-            in_features=model_config.embed_dim, out_features=data_config.num_classes)
+        # Batchnorm + Linear
+        self.linear_classifier = LinearHead(in_features=model_config.embed_dim, num_classes=data_config.num_classes)
 
         if self.replace_pe:
             self.new_pe = self.encoder.replace_pe(data_config.num_channels)

@@ -9,3 +9,4 @@ accel_cls_blk_indices: [5]
 default_cls_blk_indices: [5]
 
 input_key: naip
+patch_size: 10 #in m.

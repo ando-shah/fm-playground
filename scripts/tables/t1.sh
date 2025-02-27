@@ -22,46 +22,62 @@ exp_base_name=t01
 
 all_tasks=(
 
-    # low prio: fmow-rgb, so2sat
-
     # m-eurosat (50e = 0h15 (lp))
-    # 'base/croma_s2 linear_probe geobench_eurosat_12b 900'
-    # 'base/dofa linear_probe geobench_eurosat_13b 900'
-    # 'base/dinov2 linear_probe geobench_eurosat_rgb 900'
-    # 'base/softcon_13b linear_probe geobench_eurosat_13b 900'
-    # 'base/panopticon_v2 linear_probe geobench_eurosat_13b 200'
-
-    # benv2-s2 (50e, 10% subset = 0h20)
-    'base/croma_s2 linear_probe benv2_s2_12b 900'
-    'base/dofa linear_probe benv2_s2_12b 900'
-    'base/dinov2 linear_probe benv2_s2_rgb 900'
-    'base/panopticon_v2 linear_probe benv2_s2_12b 200'
-    'base/senpamae linear_probe benv2_s2_4b 900'
+    'base/dinov2 linear_probe geobench_eurosat_rgb 900'
+    'base/croma_s2 linear_probe geobench_eurosat_12b 900'
+    'base/softcon_13b linear_probe geobench_eurosat_13b 900'
+    'base/anysat_s2 linear_probe geobench_eurosat_10b 900'
+    'galileo'
+    'base/senpamae linear_probe geobench_eurosat_13b 900'
+    'base/dofa linear_probe geobench_eurosat_13b 900'
+    'base/panopticon_v2 linear_probe geobench_eurosat_13b 200'
 
     # resisc45 (50e = 1h30 (lp))
-    'base/dofa linear_probe resisc45 900'
     'base/dinov2 linear_probe resisc45 900'
+    'base/senpamae linear_probe resisc45 900'
+    'base/dofa linear_probe resisc45 900'
     'base/panopticon_v2 linear_probe resisc45 400'
 
     # benv2-s1 
     'base/croma_s1 linear_probe benv2_s1 900'
-    'base/dofa linear_probe benv2_s1 900'
     'base/softcon_2b linear_probe benv2_s1 900'
+    'base/anysat_s1_asc linear_probe benv2_s1 900'
+    'galileo'
+    'base/dofa linear_probe benv2_s1 900'
     'base/panopticon_v2 linear_probe benv2_s1 400'
 
-    # fmow-wv
+    # benv2-s2
+    'base/dinov2 linear_probe benv2_s2_rgb 900'
+    'base/croma_s2 linear_probe benv2_s2_12b 900'
+    'base/softcon_13b linear_probe benv2_s2_13b 900'
+    'base/anysat linear_probe benv2_s2_10b 900'
+    'galileo'
+    'base/senpamae linear_probe benv2_s2_4b 900'
+    'base/dofa linear_probe benv2_s2_12b 900'
+    'base/panopticon_v2 linear_probe benv2_s2_12b 200'
 
     # forestnet
+    'base/dinov2 linear_probe geobench_forestnet_rgb 900'
+    'base/anysat '
+    'galileo'
+    'base/senpamae linear_probe geobench_forestnet_6b 900'
+    'base/dofa linear_probe geobench_forestnet_6b 900'
+    'base/panopticon_v2 linear_probe geobench_forestnet_6b 200'
+
+    # fmow-wv
+    'base/senpamae linear_probe fmow_8b 900'
+    'base/dofa linear_probe fmow_8b'
+    'base/panopticon_v2 linear_probe fmow_8b'
 
 
-    # corine-sd (previous t1)
-    'base/dofa linear_probe corine_sd 900'
-    'base/panopticon_v2 linear_probe corine_sd 200'
-    # 'base/senpamae linear_probe corine_sd_4b 900'
+    # # corine-sd (previous t1)
+    # 'base/dofa linear_probe corine_sd 900'
+    # 'base/panopticon_v2 linear_probe corine_sd 200'
+    # # 'base/senpamae linear_probe corine_sd_4b 900'
 
-    # corine-21 (previous t1)
-    'base/dofa linear_probe corine_21b 900'
-    'base/panopticon_v2 linear_probe corine_21b 130'
+    # # corine-21 (previous t1)
+    # 'base/dofa linear_probe corine_21b 900'
+    # 'base/panopticon_v2 linear_probe corine_21b 130'
 )
 
 

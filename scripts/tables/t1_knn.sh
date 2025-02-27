@@ -4,13 +4,13 @@
 ##SBATCH --output=/home/hk-project-pai00028/tum_mhj8661/code/slurm-%A_%a.out
 
 #SBATCH --job-name=eval
-#SBATCH --partition=accelerated
+#SBATCH --partition=dev_accelerated
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=20        # default: 38
 #SBATCH --time=0:10:00
-#SBATCH --array=0-8
+#SBATCH --array=9
 
 
 
@@ -36,6 +36,7 @@ all_tasks=(
     'base/softcon_13b knn geobench_eurosat_13b 900'
     'base/panopticon_v2 knn geobench_eurosat_13b 200'
     'base/galileo_s2 knn geobench_eurosat_10b 200 '
+    'base/anysat_s2 knn geobench_eurosat_10b 50 '
 
     # # benv2-s2 (50e, 10% subset = 0h20)
     # 'base/croma_s2 linear_probe benv2_s2_12b 900'

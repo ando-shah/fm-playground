@@ -8,12 +8,8 @@ from .galileo.model import Encoder
 from typing import Any
 from pathlib import Path
 from omegaconf import OmegaConf
-
 import os
 from torchvision.datasets.utils import download_url
-
-
-
 from geofm_src.engine.model import EvalModelWrapper
 
 
@@ -125,6 +121,8 @@ class GalileoWrapper(EvalModelWrapper):
         return blocks
 
     def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
+        # lewaldm: same as in anysat; I don't think we need a separate
+        #   function since the hooks directly collect the block outputs.
         self.cache = []
         self.encoder(patch_size=self.model_config.patch_size, token_exit_cfg=self.exit_token_cfg, **self.format_input(x, self.model_config.input_key))
         blocks = self.cache

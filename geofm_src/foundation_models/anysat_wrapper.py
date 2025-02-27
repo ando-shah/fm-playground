@@ -77,7 +77,6 @@ class AnySatWrapper(EvalModelWrapper):
             dates = repeat(dates, 't -> b t', b=x.shape[0])
             anysat_input[f'{input_key}_dates'] = dates.to(x.device)
 
-
         return anysat_input
 
     def get_blocks(self, x):
@@ -89,6 +88,9 @@ class AnySatWrapper(EvalModelWrapper):
         return blocks
 
     def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
+        # leawldm: I don't think we actually need the dense prediction mode if we 
+        #   extract the blocks with the hooks. Only if we use the output,
+        #   this will make a diff.
         self.cache = []
         self.encoder(self.format_input(x, self.model_config.input_key), patch_size=self.patch_size, output='dense', output_modality=self.model_config.input_key)
         blocks = self.cache

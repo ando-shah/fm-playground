@@ -35,10 +35,11 @@ class ClsDataAugmentation(torch.nn.Module):
 
 
 class ClsGeoBenchTransform(object):
-    def __init__(self, task, split, size, band_names=None):
+    def __init__(self, task, split, size, band_names=None, num_channels=None):
         self.band_names = band_names
         MEAN, STD = task.get_dataset(band_names=band_names).normalization_stats()
         self.transform = ClsDataAugmentation(mean=MEAN, std=STD, split=split, size=size)
+        self.num_channels = num_channels
 
     def __call__(self, sample):
         array, band_names = sample.pack_to_3d(
@@ -49,6 +50,13 @@ class ClsGeoBenchTransform(object):
         )  # h,w,c
         array = torch.from_numpy(array.astype("float32")).permute(2, 0, 1)
         array = self.transform(array).squeeze(0)
+
+                # HACKY: Will only work for models that dont need chn_ids
+        # Pad with zeros if num_channels is greater than the actual channels
+        if hasattr(self, 'num_channels') and self.num_channels > array.shape[0]: 
+            padding_channels = self.num_channels - array.shape[0]
+            padding = torch.zeros((padding_channels, *array.shape[1:]), device=array.device, dtype=array.dtype)
+            array = torch.cat([array, padding], dim=0)
 
         return array, torch.tensor(sample.label)  # , band_names
 
@@ -80,13 +88,14 @@ class SegDataAugmentation(torch.nn.Module):
 
 
 class SegGeoBenchTransform(object):
-    def __init__(self, task, split, size, band_names=None):
+    def __init__(self, task, split, size, band_names=None, num_channels=None):
         self.band_names = band_names
         MEAN, STD = task.get_dataset(band_names=band_names).normalization_stats()
         if task.patch_size[0] < size[0]:
             size = task.patch_size
 
         self.transform = SegDataAugmentation(mean=MEAN, std=STD, size=size, split=split)
+        self.num_channels = num_channels
 
     def __call__(self, sample):
         array, band_names = sample.pack_to_3d(
@@ -95,8 +104,15 @@ class SegGeoBenchTransform(object):
         array = torch.from_numpy(array.astype("float32")).permute(2, 0, 1)
         mask = torch.from_numpy(sample.label.data.astype("float32")).squeeze(-1)
         array, mask = self.transform(array.unsqueeze(0), mask.unsqueeze(0).unsqueeze(0))
+        array, mask = array.squeeze(0), mask.squeeze(0).squeeze(0)
+        # HACKY: Will only work for models that dont need chn_ids
+        #pad with zeros if num_channels is greater than the actual channels
+        if hasattr(self, 'num_channels') and self.num_channels > array.shape[0]: 
+            padding_channels = self.num_channels - array.shape[0]
+            padding = torch.zeros((padding_channels, *array.shape[1:]), device=array.device, dtype=array.dtype)
+            array = torch.cat([array, padding], dim=0)
 
-        return array.squeeze(0), mask.squeeze(0).squeeze(0)
+        return array, mask
 
 
 class GeoBenchDataset:
@@ -105,6 +121,7 @@ class GeoBenchDataset:
         task_iter = geobench.task_iterator(benchmark_name=config.benchmark_name)
         self.tasks = {task.dataset_name: task for task in task_iter}
         self.img_size = (config.image_resolution, config.image_resolution)
+        self.num_channels = config.num_channels
 
     def create_dataset(self):
         task = self.tasks.get(self.dataset_config.dataset_name)
@@ -122,12 +139,14 @@ class GeoBenchDataset:
             split="train",
             size=self.img_size,
             band_names=self.dataset_config.band_names,
+            num_channels=self.num_channels,  # Added num_channels here
         )
         val_transform = GeoBenchTransform(
             task,
             split="valid",
             size=self.img_size,
             band_names=self.dataset_config.band_names,
+            num_channels=self.num_channels,  # Added num_channels here
         )
 
         dataset_train = task.get_dataset(

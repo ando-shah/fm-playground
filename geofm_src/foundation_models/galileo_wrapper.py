@@ -120,16 +120,16 @@ class GalileoWrapper(EvalModelWrapper):
         self.cache = [] 
         return blocks
 
-    def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
-        # lewaldm: same as in anysat; I don't think we need a separate
-        #   function since the hooks directly collect the block outputs.
-        self.cache = []
-        self.encoder(patch_size=self.model_config.patch_size, token_exit_cfg=self.exit_token_cfg, **self.format_input(x, self.model_config.input_key))
-        blocks = self.cache
-        patch_size = int(blocks[0].size(1) ** 0.5)
-        out = [rearrange(f[:, 1:, :], "b (h w) c -> b c h w", h=patch_size, w=patch_size) for f in blocks]
-        self.cache = []
-        return out
+    # def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
+    #     # lewaldm: same as in anysat; I don't think we need a separate
+    #     #   function since the hooks directly collect the block outputs.
+    #     self.cache = []
+    #     self.encoder(patch_size=self.model_config.patch_size, token_exit_cfg=self.exit_token_cfg, **self.format_input(x, self.model_config.input_key))
+    #     blocks = self.cache
+    #     patch_size = int(blocks[0].size(1) ** 0.5)
+    #     out = [rearrange(f[:, 1:, :], "b (h w) c -> b c h w", h=patch_size, w=patch_size) for f in blocks]
+    #     self.cache = []
+    #     return out
 
     def default_blocks_to_featurevec(self, block_list):
         x = block_list[-1][:, 1:,:].mean(dim=1)

@@ -81,7 +81,7 @@ def main(cfg: DictConfig):
         defaults = OmegaConf.load(os.path.join(default_config_dir, 'lightning.yaml'))
         cfg = OmegaConf.merge(defaults, cfg)
 
-        assert all([k not in cfg for k in ['pooling','n_last_blocks_list']]), 'only for accelerated engine'
+        assert all([k not in cfg for k in ['pooling','n_last_blocks_list']]), 'only for accelerated linear_prob engine'
 
         args_defining_run = {
             "lr": "lr",
@@ -94,7 +94,6 @@ def main(cfg: DictConfig):
         assert not 'base_lr' in cfg, 'base_lr is legacy, only provide lr'
         with open_dict(cfg):
             cfg.inputted_lr = cfg.lr
-        
         cfg.lr = cfg.lr * cfg.batch_size / 256 * cfg.num_gpus
 
     # get metrics
@@ -229,9 +228,13 @@ def main(cfg: DictConfig):
 
         # Test
         best_checkpoint_path = callbacks[0].best_model_path
-        results_list = trainer.test(pl_task, data_module, ckpt_path=best_checkpoint_path)
-        results_dict = {k:v for l in results_list for k,v in l.items()}
-        results = pd.DataFrame([results_dict])
+        results_per_ds_list = trainer.test(pl_task, data_module, ckpt_path=best_checkpoint_path)
+        results_list = [dict(
+            metric_str=k,
+            val=v,
+            best_classifier=f'lr={cfg.lr}'
+        ) for ds_dict in results_per_ds_list for k,v in ds_dict.items()]
+        results = pd.DataFrame(results_list)
 
 
     elif engine == 'accelerated':

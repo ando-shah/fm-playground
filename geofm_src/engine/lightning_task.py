@@ -52,8 +52,12 @@ class LightningTask(LightningModule):
     def log_metrics(self, outputs, targets, loss, prefix="train"):
         metrics = self.__getattr__(f"{prefix}_metrics")
         out_dict = metrics(outputs, targets)
-        self.log(f"{prefix}/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log_dict(out_dict, on_epoch=True, on_step=True, prog_bar=True)
+
+        on_step = True if prefix == 'train' else False
+        on_epoch = True
+
+        self.log(f"{prefix}/loss", loss, on_step=on_step, on_epoch=on_epoch, prog_bar=True)
+        self.log_dict(out_dict, on_step=on_step, on_epoch=on_epoch, prog_bar=True)
 
 
     def training_step(self, batch, batch_idx):
@@ -239,7 +243,7 @@ class LightningClsRegTask(LightningTask):
 
 class LightningSegmentationTask(LightningTask):
 
-    encoder: torch.nn.Module
+    encoder: EvalModelWrapper
 
     def __init__(self, args, model_config, data_config, encoder: EvalModelWrapper):
         super().__init__(args, model_config, data_config, encoder)
@@ -297,15 +301,16 @@ class LightningSegmentationTask(LightningTask):
             list(self.neck.parameters())
             + list(self.decoder.parameters())
             + list(self.aux_head.parameters()))
-    
-    def _forward_feats(self, x: Tensor):
-        """ returns features from the encoder ready to be inputted to self.neck """
-        feats = self.encoder.default_input_to_feature_list(x)
-        return feats
+
         
     def forward(self, images):
         """Forward pass of the model."""
-        feats = self._forward_feats(images)
+        if self.training_mode == 'frozen_backbone':
+            with torch.no_grad():
+                feats = self.encoder.get_segm_blks(images)
+        else:
+            feats = self.encoder.get_segm_blks(images)
+
         feats = self.neck(feats)
         out = self.decoder(feats)
         out = resize(out, size=images.shape[2:], mode="bilinear", align_corners=False)
@@ -319,18 +324,10 @@ class LightningSegmentationTask(LightningTask):
         images, targets = batch
         outputs = self(images)
         loss = self.loss(outputs, targets)
-        self.log_metrics(outputs, targets, prefix)
+        self.log_metrics(outputs[0], targets, loss, prefix)
         return loss
     
     def loss(self, outputs, labels):
         return self.criterion(outputs[0], labels.long()) + 0.4 * self.criterion(
             outputs[1], labels.long()
         )
-
-    def log_metrics(self, outputs, targets, prefix="train"):
-        # Calculate mIoU and other segmentation-specific metrics
-        miou, acc = seg_metric(self.data_config, outputs[0], targets)
-        loss = self.loss(outputs, targets)
-        self.log(f"{prefix}_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_miou", miou, on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}_acc", acc, on_step=True, on_epoch=True, prog_bar=True)

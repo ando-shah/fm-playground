@@ -1,4 +1,5 @@
 import torch.nn as nn
+from einops import rearrange 
 
 
 class EvalModelWrapper(nn.Module):
@@ -80,3 +81,16 @@ class EvalModelWrapper(nn.Module):
             module or list of parameters to optimize.
         """
         raise NotImplementedError()
+    
+    def get_segm_blks(self, x):
+        """ 
+        extracts segmentation blocks as list of tensors where each 
+        tensor has shape [b,d,h,w]. This default function works for standard
+        ViT with a single cls token.
+        """
+        block_list = self.get_blocks(x)
+        patch_size = int(block_list[0].size(1) ** 0.5) # assume quadratic images
+        block_list = [blk[:, 1:, :] for blk in block_list] # drop cls token
+        out = [rearrange(blk, "b (h w) d -> b d h w", h=patch_size, w=patch_size) 
+               for blk in block_list]
+        return out

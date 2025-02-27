@@ -91,17 +91,17 @@ class AnySatWrapper(EvalModelWrapper):
         self.cache = [] 
         return blocks
 
-    def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
-        # leawldm: I don't think we actually need the dense prediction mode if we 
-        #   extract the blocks with the hooks. Only if we use the output,
-        #   this will make a diff.
-        self.cache = []
-        self.encoder(self.format_input(x, self.model_config.input_key), patch_size=self.patch_size, output='dense', output_modality=self.model_config.input_key)
-        blocks = self.cache
-        self.cache = []
-        patch_size = int(blocks[0].size(1) ** 0.5)
-        out = [rearrange(f[:, 1:, :], "b (h w) c -> b c h w", h=patch_size, w=patch_size) for f in blocks]
-        return out
+    # def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
+    #     # leawldm: I don't think we actually need the dense prediction mode if we 
+    #     #   extract the blocks with the hooks. Only if we use the output,
+    #     #   this will make a diff.
+    #     self.cache = []
+    #     self.encoder(self.format_input(x, self.model_config.input_key), patch_size=self.patch_size, output='dense', output_modality=self.model_config.input_key)
+    #     blocks = self.cache
+    #     self.cache = []
+    #     patch_size = int(blocks[0].size(1) ** 0.5)
+    #     out = [rearrange(f[:, 1:, :], "b (h w) c -> b c h w", h=patch_size, w=patch_size) for f in blocks]
+    #     return out
 
     def default_blocks_to_featurevec(self, block_list):
         x = block_list[-1][:, 1:,:].mean(dim=1)

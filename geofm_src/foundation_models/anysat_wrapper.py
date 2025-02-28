@@ -1,3 +1,4 @@
+from omegaconf import open_dict
 import torch.nn as nn
 import torch
 from torch import Tensor
@@ -20,6 +21,9 @@ class AnySatWrapper(EvalModelWrapper):
                 lambda m, i, o: self._cache_block(o))
             
         self.patch_size = self.model_config.get('patch_size', 100)
+        if not 'replace_pe' in self.model_config:
+            with open_dict(self.model_config):
+                self.model_config.replace_pe = False
 
         # print('FORCING REPLACING PE')
         # self.encoder.model.projector_naip.patch_embed = self.replace_pe(3)
@@ -104,9 +108,8 @@ class AnySatWrapper(EvalModelWrapper):
     #     return out
 
     def default_blocks_to_featurevec(self, block_list):
+        # anysats default aggregation is just returning the last 
         x = block_list[-1][:, 1:,:].mean(dim=1)
-        # TODO not sure how to configure the norm layer above
-        # x = self.norm(x)
         return x
     
     def replace_pe(self, num_channels):

@@ -5,6 +5,6 @@ bands:
   B14:
     name: 'Clean IR Longwave Band'
     gaussian:
-      mu: 1111
-      sigma: 25
+      mu: 10400
+      sigma: 250
 

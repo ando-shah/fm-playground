@@ -5,6 +5,6 @@ bands:
   B13:
     name: 'Clean IR Longwave Band'
     gaussian:
-      mu: 1040
-      sigma: 20
+      mu: 10300
+      sigma: 200
 

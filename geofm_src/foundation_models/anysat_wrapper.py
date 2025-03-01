@@ -38,7 +38,8 @@ class AnySatWrapper(EvalModelWrapper):
             dict[str, Tensor]: formatted input tensor
         """
         dates = None
-        if not self.model_config.replace_pe:
+        replace_pe = self.model_config.get('replace_pe', False)
+        if not replace_pe:
             match input_key:
                 case "s2":
                     assert x.shape[1] == 10, "Input tensor for s2 should have 10 channels"

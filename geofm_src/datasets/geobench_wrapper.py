@@ -3,30 +3,29 @@ import kornia as K
 import torch
 from torchgeo.samplers.utils import _to_tuple
 import logging
-
+from .utils.utils import Downsample
 logger = logging.getLogger()
 
 class ClsDataAugmentation(torch.nn.Module):
-    def __init__(self, mean, std, size, split="valid"):
+    def __init__(self, mean, std, size, split="valid", scale=1.0):
         super().__init__()
 
+        norm = K.augmentation.Normalize(mean=mean, std=std)
+        rc = K.augmentation.RandomResizedCrop(size=size, scale=(0.8, 1.0), align_corners=True)
+        r = K.augmentation.Resize(size=size, align_corners=True)
+        h = K.augmentation.RandomHorizontalFlip(p=0.5)
+        v = K.augmentation.RandomVerticalFlip(p=0.5)
+        ds = Downsample(scale)
+
+
         if split == "train":
-            self.transform = torch.nn.Sequential(
-                K.augmentation.Normalize(mean=mean, std=std),
-                K.augmentation.RandomResizedCrop(
-                    size=size, scale=(0.8, 1.0), align_corners=True
-                ),  # croma sentinel 2
-                K.augmentation.RandomHorizontalFlip(p=0.5),
-                K.augmentation.RandomVerticalFlip(p=0.5),
-            )
+            self.transform = [norm, rc, h, v]
         else:
-            self.transform = torch.nn.Sequential(
-                K.augmentation.Normalize(mean=mean, std=std),
-                K.augmentation.Resize(
-                    size=size, align_corners=True
-                ),  # croma sentinel 2
-                
-            )
+            self.transform = [norm, r]
+
+        if scale != 1.0:
+            self.transform.append(ds)
+        self.transform = torch.nn.Sequential(*self.transform)
 
     @torch.no_grad()
     def forward(self, x):
@@ -35,11 +34,12 @@ class ClsDataAugmentation(torch.nn.Module):
 
 
 class ClsGeoBenchTransform(object):
-    def __init__(self, task, split, size, band_names=None, num_channels=None):
+    def __init__(self, task, split, size, band_names=None, num_channels=None, scale=1.0):
         self.band_names = band_names
         MEAN, STD = task.get_dataset(band_names=band_names).normalization_stats()
-        self.transform = ClsDataAugmentation(mean=MEAN, std=STD, split=split, size=size)
+        self.transform = ClsDataAugmentation(mean=MEAN, std=STD, split=split, size=size, scale=scale)
         self.num_channels = num_channels
+        self.scale = scale
 
     def __call__(self, sample):
         array, band_names = sample.pack_to_3d(
@@ -122,6 +122,9 @@ class GeoBenchDataset:
         self.tasks = {task.dataset_name: task for task in task_iter}
         self.img_size = (config.image_resolution, config.image_resolution)
         self.num_channels = config.num_channels
+        self.scale = config.get("scale", 1.0)
+        if self.scale != 1.0:
+            print('GeoBenchDataset scale: ', self.scale)
 
     def create_dataset(self):
         task = self.tasks.get(self.dataset_config.dataset_name)
@@ -147,6 +150,7 @@ class GeoBenchDataset:
             size=self.img_size,
             band_names=self.dataset_config.band_names,
             num_channels=self.num_channels,  # Added num_channels here
+            scale=self.scale,
         )
 
         dataset_train = task.get_dataset(

@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from typing import List, Tuple
 import os, yaml
+import kornia.augmentation as K
 
 # ------------------------------------------------------------------------------
 # Hyperspectral Eval Augmentations
@@ -18,6 +19,22 @@ class ChannelSampler(torch.nn.Module):
 
     def __call__(self, x):
         return x[self.band_ids]
+
+class Downsample(torch.nn.Module):
+    def __init__(self, scale: float):
+        super().__init__()
+        self.scale = scale
+
+    def __call__(self, x):
+        
+        h, w = x.shape[-2], x.shape[-1]
+        h2, w2 = int(h*self.scale), int(w*self.scale)
+
+        #first downsample the image by the scale factor, then upsample to the original size
+        x = K.Resize(size=(h2, w2), align_corners=True)(x)
+        x = K.Resize(size=(h, w), align_corners=True)(x)
+        assert x.shape[-2] == h and x.shape[-1] == w, f'Downsample failed: {x.shape[1]} != {h} or {x.shape[2]} != {w}'
+        return x
 
 
 

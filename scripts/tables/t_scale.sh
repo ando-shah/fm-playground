@@ -4,7 +4,7 @@ export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
 fastdevrun=no
-exp_base_name=t_scale
+exp_base_name=t_scale.1
 overwrite=True
 
 
@@ -148,16 +148,34 @@ all_tasks=(
     #pv4ger_cls scale knn 12.5%: 88-93
     "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 0.125"
     "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 0.125"
-    "base/dofa knn geobench_pv4ger_cls 800 1.0 0.125"
+    "base/dofa knn geobench_pv4ger_cls 1000 1.0 0.125"
     "base/senpamae knn geobench_pv4ger_cls 800 1.0 0.125"
     "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 0.125" 
     "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 0.125"
-    
-    
-    
-    
 
+    #pv4ger_cls scale knn 25%: 94-99
+    "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 0.25"
+    "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 0.25"
+    "base/dofa knn geobench_pv4ger_cls 1000 1.0 0.25"
+    "base/senpamae knn geobench_pv4ger_cls 800 1.0 0.25"
+    "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 0.25" 
+    "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 0.25"
 
+    #pv4ger_cls scale knn 50%: 100-105
+    "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 0.5"
+    "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 0.5"
+    "base/dofa knn geobench_pv4ger_cls 1000 1.0 0.5"
+    "base/senpamae knn geobench_pv4ger_cls 800 1.0 0.5"
+    "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 0.5" 
+    "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 0.5"
+
+    #pv4ger_cls scale knn 100%: 106-111
+    "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 1.0"
+    "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 1.0"
+    "base/dofa knn geobench_pv4ger_cls 1000 1.0 1.0"
+    "base/senpamae knn geobench_pv4ger_cls 800 1.0 1.0"
+    "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 1.0" 
+    "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 1.0"
     
     
 )

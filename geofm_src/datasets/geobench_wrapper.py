@@ -88,7 +88,7 @@ class SegDataAugmentation(torch.nn.Module):
 
 
 class SegGeoBenchTransform(object):
-    def __init__(self, task, split, size, band_names=None, num_channels=None):
+    def __init__(self, task, split, size, band_names=None, num_channels=None, scale=1.0):
         self.band_names = band_names
         MEAN, STD = task.get_dataset(band_names=band_names).normalization_stats()
         if task.patch_size[0] < size[0]:

@@ -10,3 +10,5 @@ data_path: ${oc.env:DATASETS_DIR}/DigitalTyphoon
 image_resolution: 224
 multilabel: false
 sequence_length: 3 # number of timesteps in the sequence
+wavelengths_mean_nm: [10400, 10400, 10400]
+wavelengths_sigma_nm: [250, 250, 250]

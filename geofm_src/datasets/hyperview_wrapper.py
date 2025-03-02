@@ -106,6 +106,7 @@ class HyperviewBenchmark(NonGeoDataset):
         create_splits: bool = False,
         transforms: Optional[Callable] = None,
         normalize: bool = True,
+        normalize_target: bool = True,
         seed: int = 13, #optional, for splitting
         do_mask: bool = True, # to mask or not to mask
         mask_value: float = 0.0, #for masking out the masked values
@@ -137,6 +138,8 @@ class HyperviewBenchmark(NonGeoDataset):
             
         if self.normalize:
             self.channelwise_transforms = self._build_ch_transforms()
+
+        self.normalize_target = normalize_target
 
     def split_train_val_test(self) -> list:
         """Split Train/Val/Test at the tile level."""
@@ -200,7 +203,8 @@ class HyperviewBenchmark(NonGeoDataset):
         """
         row = self.df.iloc[index]
         targets = torch.tensor(row[self.keys].values.tolist(), dtype=torch.float32)
-        targets = (targets - self.TARGET_MEAN) / self.TARGET_STD
+        if self.normalize_target:
+            targets = (targets - self.TARGET_MEAN) / self.TARGET_STD
         return targets
 
     def __getitem__(self, index: int) -> dict[str, Tensor]:
@@ -330,7 +334,7 @@ class HyperviewDataset(BaseDataset):
         super().__init__(config)
         self.mask_image = config.get("mask_image", True)
         self.mask_value = config.get("mask_value", 0.0)
-
+        self.normalize_target = config.get("normalize_target", True)
        
     def create_dataset(self):
         train_transform = RegDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
@@ -350,13 +354,13 @@ class HyperviewDataset(BaseDataset):
             self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 
         dataset_train = HyperviewBenchmark(
-            root=self.root_dir, split="train", transforms=train_transform, do_mask=self.mask_image, mask_value=self.mask_value
+            root=self.root_dir, split="train", transforms=train_transform, do_mask=self.mask_image, mask_value=self.mask_value, normalize_target=self.normalize_target
         )
         dataset_val = HyperviewBenchmark(
-            root=self.root_dir, split="val",  transforms=eval_transform, do_mask=self.mask_image, mask_value=self.mask_value
+            root=self.root_dir, split="val",  transforms=eval_transform, do_mask=self.mask_image, mask_value=self.mask_value, normalize_target=self.normalize_target
         )
         dataset_test = HyperviewBenchmark(
-            root=self.root_dir, split="test",  transforms=eval_transform, do_mask=self.mask_image, mask_value=self.mask_value
+            root=self.root_dir, split="test",  transforms=eval_transform, do_mask=self.mask_image, mask_value=self.mask_value, normalize_target=self.normalize_target
         )
 
         return dataset_train, dataset_val, dataset_test

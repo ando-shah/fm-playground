@@ -3,8 +3,9 @@ export $(cat /home/ando/fm-playground/.env)
 export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
-fastdevrun=true
-exp_base_name=senpamae_test
+fastdevrun=no
+exp_base_name=t2_brickkiln
+overwrite=True
 
 
 # Parse CUDA device number from command line (default to 0)
@@ -22,111 +23,201 @@ else
     task_ids=("$@")
 fi
 
-bsz_brick_kiln=100
-bsz_eurosat=1024
-bsz_pv4ger=512
-bsz_so2sat=1024
-bsz_benv2=512
-bsz_forestnet=512
 
+bsz_benv2=512
+
+#train percent
+corine_train_percent=1.0
+benv2_train_percent=0.05 #same size as corine ~ 8000 samples
+eurosat_train_percent=1.0
 
 all_tasks=(
-    # 'base/anysat_s2 linear_probe benv2_s2_10b'
-    #DOFA: BENv2
-    #dinov2
-    # "base/dinov2 linear_probe geobench_pv4ger_cls ${bsz_pv4ger}"
 
-    # #SoftCon
-    # # 'base/softcon_13b linear_probe benv2_s2_13b 2048' # TODO: add this
-    # "base/softcon_13b linear_probe geobench_brick_kiln_13b ${bsz_brick_kiln}"
-    # "base/softcon_13b linear_probe geobench_eurosat_13b ${bsz_eurosat}"
+    #DOFA: Corine 0-2
+    "base/dofa linear_probe corine_1b 3000 ${corine_train_percent}"
+    "base/senpamae linear_probe corine_1b 2048 ${corine_train_percent}"
+    "base/panopticon linear_probe corine_1b 800 ${corine_train_percent}"
 
-    # #AnySat TODO
-    # # "base/anysat_s2 linear_probe geobench_pv4ger_cls ${bsz_pv4ger}"
+    #Corine 3-5
+    "base/dofa linear_probe corine_4b 2048 ${corine_train_percent}"
+    "base/senpamae linear_probe corine_4b 1200 ${corine_train_percent}"
+    "base/panopticon linear_probe corine_4b 500 ${corine_train_percent}"
 
-    # # CROMA
-    # "base/croma_s2 linear_probe benv2_s2_12b ${bsz_benv2}"
-    # "base/croma_s2 linear_probe geobench_brick_kiln_12b ${bsz_brick_kiln}"
-    # "base/croma_s2 linear_probe geobench_eurosat_12b ${bsz_eurosat}"
+    #Corine 6-8
+    "base/dofa linear_probe corine_10b 2048 ${corine_train_percent}"
+    "base/senpamae linear_probe corine_10b 500 ${corine_train_percent}"
+    "base/panopticon linear_probe corine_10b 280 ${corine_train_percent}"
+
+    #Corine 9-11
+    "base/dofa linear_probe corine_21b 1500 ${corine_train_percent}"
+    "base/senpamae linear_probe corine_21b 300 ${corine_train_percent}"
+    "base/panopticon linear_probe corine_21b 130 ${corine_train_percent}"
+
+    #Corine 12-14   
+    "base/dofa linear_probe corine_50b 600 ${corine_train_percent}" #anything more than 512 is throttled by CPU RAM
+    "base/senpamae linear_probe corine_50b 60 ${corine_train_percent}"
+    "base/panopticon linear_probe corine_50b 60 1.0"
+
+    # low prio: 15-17
+    "base/dofa linear_probe corine_202b 100 ${corine_train_percent}"
+    "base/senpamae linear_probe corine_202b 15 ${corine_train_percent}"
+    "base/panopticon linear_probe corine_202b 15 ${corine_train_percent}"
+
+    # Corine kNN :(
+    # "base/dofa knn corine_1b 10000 ${corine_train_percent}"
+    # "base/senpamae knn corine_1b 8000 ${corine_train_percent}"
+    # "base/panopticon knn corine_1b 2400 ${corine_train_percent}"
+
+    # "base/dofa knn corine_4b 5000 ${corine_train_percent}"
+    # "base/senpamae knn corine_4b 3000 ${corine_train_percent}"
+    # "base/panopticon knn corine_4b 1000 ${corine_train_percent}"
+
+    # "base/dofa knn corine_10b 3000 ${corine_train_percent}"
+    # "base/senpamae knn corine_10b 1000 ${corine_train_percent}"
+    # "base/panopticon knn corine_10b 500 ${corine_train_percent}"
     
-    # #Galileo: TODO Test first
-    # 'base/galileo_s2 linear_probe benv2_s2_10b 400' # Test
-    # 'base/galileo_s2 linear_probe geobench_brick_kiln_10b 400'
-    # 'base/galileo_s2 linear_probe geobench_eurosat_10b 400'
-    # 'base/galileo_s2 linear_probe geobench_so2sat_10b 400'
+    # "base/dofa knn corine_21b 1024 ${corine_train_percent}"
+    # "base/senpamae knn corine_21b 1024 ${corine_train_percent}"
+    # "base/panopticon knn corine_21b 150 ${corine_train_percent}"
 
-    # #SenPaMae
-    "base/senpamae_10b linear_probe benv2_s2_10b 512"
-    # "base/senpamae linear_probe geobench_forestnet_4b 512"
-    "base/senpamae_10b linear_probe geobench_brick_kiln_10b 512"
-    # "base/senpamae linear_probe geobench_so2sat_4b 512"
-    # "base/senpamae linear_probe geobench_eurosat_4b 512"
-    # 'base/senpamae linear_probe fmow_4b 512' #remove for T3
-    'base/senpamae_8b linear_probe corine_sd 512' #remove for T3
-    # #DOFA
-    # "base/dofa linear_probe benv2_s2_12b ${bsz_benv2}"
-    # "base/dofa linear_probe geobench_forestnet_6b ${bsz_forestnet}"
-    # "base/dofa linear_probe geobench_brick_kiln_12b ${bsz_brick_kiln}"
-    # "base/dofa linear_probe geobench_pv4ger_cls ${bsz_pv4ger}"  # Fixed missing $ before {
-    # "base/dofa linear_probe geobench_eurosat_12b ${bsz_eurosat}"
-    # "base/dofa linear_probe geobench_so2sat_10b ${bsz_so2sat}"  # Fixed missing $ before {
+    
+    # Eurosat kNN 18-21
+    "base/dofa knn geobench_eurosat_1b 30000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_eurosat_1b 30000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_eurosat_1b 20000 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_eurosat_1b 20000 ${eurosat_train_percent}"
+
+    # Eurosat kNN 22-25
+    "base/dofa knn geobench_eurosat_4b 20000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_eurosat_4b 20000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_eurosat_4b 1000 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_eurosat_4b 1000 ${eurosat_train_percent}"
+    # Eurosat kNN 26-29
+    "base/dofa knn geobench_eurosat_10b 15000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_eurosat_10b 1000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_eurosat_10b 400 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_eurosat_10b 400 ${eurosat_train_percent}"
+
+    # Eurosat kNN 30-33 
+    "base/dofa knn geobench_eurosat_12b 15000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_eurosat_12b 1000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_eurosat_12b 300 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_eurosat_12b 300 ${eurosat_train_percent}"
+
+
+
+    # Brick Kiln kNN 34-37
+    "base/dofa knn geobench_brick_kiln_1b 30000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_brick_kiln_1b 30000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_brick_kiln_1b 20000 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_brick_kiln_1b 20000 ${eurosat_train_percent}"
+
+    # Brick Kiln kNN 38-41  
+    "base/dofa knn geobench_brick_kiln_4b 20000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_brick_kiln_4b 20000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_brick_kiln_4b 1000 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_brick_kiln_4b 1000 ${eurosat_train_percent}"
+
+    # Brick Kiln kNN 42-45
+    "base/dofa knn geobench_brick_kiln_10b 15000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_brick_kiln_10b 1000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_brick_kiln_10b 400 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_brick_kiln_10b 400 ${eurosat_train_percent}"
+    # Brick Kiln kNN 46-49
+    "base/dofa knn geobench_brick_kiln_12b 15000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_brick_kiln_12b 1000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_brick_kiln_12b 300 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_brick_kiln_12b 300 ${eurosat_train_percent}"
+    #BENv2: 10%
+
+    # "base/dofa linear_probe benv2_s2_1b 3000 ${benv2_train_percent}"
+    # "base/senpamae linear_probe benv2_s2_1b 3000 ${benv2_train_percent}"
+    # "base/panopticon linear_probe benv2_s2_1b 800 ${benv2_train_percent}"
+
+    # "base/dofa linear_probe benv2_s2_4b ${bsz_benv2} ${benv2_train_percent}" #died - run again
+    # "base/senpamae linear_probe benv2_s2_4b ${bsz_benv2} ${benv2_train_percent}"
+    # "base/panopticon linear_probe benv2_s2_4b ?? ${benv2_train_percent}"
+
+    # "base/dofa linear_probe benv2_s2_10b ${bsz_benv2} ${benv2_train_percent}"
+    # "base/senpamae linear_probe benv2_s2_10b ${bsz_benv2} ${benv2_train_percent}"
+    # "base/panopticon linear_probe benv2_s2_10b ?? ${benv2_train_percent}"
+
+    # "base/dofa linear_probe benv2_s2_12b ${bsz_benv2} ${benv2_train_percent}"
+    # "base/senpamae linear_probe benv2_s2_12b ${bsz_benv2} ${benv2_train_percent}"
+    # "base/panopticon linear_probe benv2_s2_12b ?? ${benv2_train_percent}"
+    
 )
 
 ########## linear probe defaults
-n_last_blocks_list='[1,4]'
-pooling='[avgpool,cls,default]'
-lrs_linear_probe='[1e-5,5e-5,1e-4,5e-4,1e-3,5e-3,1e-2,5e-2,0.1,0.2,0.3,0.5,1,3,5,10,20]'
+
+optim=sgd
 
 ########## pe linear probe (=partial finetune) defaults
+
 lrs_partial_ft="10 0.1 0.01 0.001"
 warmup_epochs=0
 
 ########## defaults both
+
 epochs=50
-batch_size=500
-num_workers=8
+num_workers=4
 check_val_every_n_epoch=10
+val_subset=-1
+nb_knn="[20]"
+
 
 export CUDA_VISIBLE_DEVICES=$cuda_device
 
-# export CUDA_LAUNCH_BLOCKING=1
-
 # Loop through each task ID provided
 for task_id in "${task_ids[@]}"; do
-    task=${all_tasks[$task_id]}
 
-    ########## extract task specific parameters
+    task=${all_tasks[$task_id]}
+    echo "Running Task: $task"
+
     set -- $task
     model=$1
     training_mode=$2
     ds=$3
     batch_size=$4
+    train_subset=$5
 
-    ########## execution
+
     cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py \
         model=$model \
         dataset=$ds \
         output_dir=$ODIR/$exp_base_name/$ds/$model/$training_mode/ \
         +model.training_mode=$training_mode \
-        \
-        epochs=$epochs \
-        \
         ++batch_size=$batch_size \
         num_workers=$num_workers \
         num_gpus=1 \
         seed=21 \
+        ++overwrite=$overwrite \
         "
 
-    if $fastdevrun; then
-        echo "fastdevrun!"
-        cmd="$cmd epochs=1 batch_size=64 trainer.check_val_every_n_epoch=1 overwrite=True"
+    if [ $fastdevrun == 'no' ]; then
+        cmd="$cmd epochs=$epochs batch_size=$batch_size trainer.check_val_every_n_epoch=$check_val_every_n_epoch dataset.subset.train=$train_subset"
+        # dataset.subset.val=$train_subset"
+
+    elif [ $fastdevrun == 'fast' ]; then
+        echo "fastdevrun 'fast'!"
+        cmd="$cmd epochs=1 batch_size=32 trainer.check_val_every_n_epoch=1"
+        cmd="$cmd dataset.subset.train=64 dataset.subset.val=64 dataset.subset.test=64"
+        lrs_partial_ft="0.1"
+
+    elif [ $fastdevrun == 'bsz' ]; then
+        echo "fastdevrun 'bsz'!"
+        cmd="$cmd epochs=1 batch_size=$batch_size trainer.check_val_every_n_epoch=1"
+        s=$((batch_size * 1))
+        echo $s
+        cmd="$cmd dataset.subset.train=$s dataset.subset.val=$s dataset.subset.test=$s"
+        lrs_partial_ft="0.1"
+
     else
-        cmd="$cmd epochs=$epochs batch_size=$batch_size trainer.check_val_every_n_epoch=$check_val_every_n_epoch"
+        echo "fastdevrun not recognized"
+        exit 1
     fi
 
-
-
-    echo "\n\n**************** Running Task: ****************\n\n"
+    echo -e "\n\n**************** Running Task: ****************\n\n"
     echo "Task ID: $task_id"
     echo "Task: $task"
     echo "Model: $model"
@@ -136,45 +227,49 @@ for task_id in "${task_ids[@]}"; do
     echo "Output Dir: $output_dir"
     echo "Check Val Every N Epoch: $check_val_every_n_epoch"
     echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
-    echo "\n\n************************************************\n\n"
+    echo -e "\n\n************************************************\n\n"
+
 
     if [ $training_mode == 'linear_probe' ]; then
-        if $fastdevrun; then
-            cmd="$cmd dataset.subset.train=64 dataset.subset.val=64 dataset.subset.test=64"
-        fi
         
         cmd="$cmd \
-            +n_last_blocks_list=$n_last_blocks_list \
-            +pooling=$pooling \
-            +lr=$lrs_linear_probe"
+            +optim=\${_optims.$optim} \
+            "
         echo $cmd
         $cmd
             
     elif [ $training_mode == 'partial_finetune' ]; then
-        if $fastdevrun; then
-            cmd="$cmd dataset.subset.train=64 dataset.subset.val=64 dataset.subset.test=64"
-            lrs_partial_ft="0.1 0.01"
-        fi
 
         for lr in $lrs_partial_ft; do
             echo "partial finetune with lr=$lr"
             lr_cmd="$cmd \
                 +lr=$lr \
-                +base_lr=-1 \
                 +model.params_to_train=[] \
                 warmup_epochs=$warmup_epochs \
                 "
             echo $lr_cmd
             $lr_cmd
         done
-    fi
-done
 
+    elif [ $training_mode == 'knn' ]; then
+
+        cmd="$cmd \
+        +temperature=$temperature \
+        +nb_knn=$nb_knn \
+        ++num_workers=16 \
+        "
+        echo $cmd
+        $cmd
+    fi
+            
+
+    # collect results
+    $PY_EXECUTABLE $REPO_PATH/geofm_src/collect_results.py $ODIR/$exp_base_name/
+
+done
 
 #Run like this:
 # ./t2.sh 0 1 2  # Run tasks 0, 1, and 2
 # ./t2.sh {0..3}  # Run tasks 0 through 3
-# ./t3.sh - Uses CUDA device 0 and runs all tasks
-# ./t3.sh --device 1 - Uses CUDA device 1 and runs all tasks
-# ./t3.sh -d 2 0 1 - Uses CUDA device 2 and runs tasks 0 and 1
-# ./t3.sh 0 1 2 - Uses default CUDA device 0 and runs tasks 0, 1, and 2
+
+

@@ -4,8 +4,8 @@ export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
 fastdevrun=no
-exp_base_name=t_scale.1
-overwrite=True
+exp_base_name=t_scale_v3
+overwrite=False
 
 
 # Parse CUDA device number from command line (default to 0)
@@ -41,31 +41,7 @@ all_tasks=(
     "base/panopticon_v2 knn resisc45 700 1.0 0.125" 
     "base/panopticon_v3 knn resisc45 700 1.0 0.125"
 
-    #Resisc45 scale knn 25%: 6-11
-    "base/dinov2 knn resisc45 800 1.0 0.25"
-    "base/anysat_spot knn resisc45 800 1.0 0.25"
-    "base/dofa knn resisc45 800 1.0 0.25"
-    "base/senpamae knn resisc45 800 1.0 0.25"
-    "base/panopticon_v2 knn resisc45 700 1.0 0.25"
-    "base/panopticon_v3 knn resisc45 700 1.0 0.25"
-
-    #Resisc45 scale knn 50%: 12-17
-    "base/dinov2 knn resisc45 800 1.0 0.5"
-    "base/anysat_spot knn resisc45 800 1.0 0.5"
-    "base/dofa knn resisc45 800 1.0 0.5"
-    "base/senpamae knn resisc45 800 1.0 0.5"
-    "base/panopticon_v2 knn resisc45 700 1.0 0.5"
-    "base/panopticon_v3 knn resisc45 700 1.0 0.5"
-
-    #Resisc45 scale knn 100%: 18-23
-    "base/dinov2 knn resisc45 800 1.0 1.0"
-    "base/anysat_spot knn resisc45 800 1.0 1.0"
-    "base/dofa knn resisc45 800 1.0 1.0"
-    "base/senpamae knn resisc45 800 1.0 1.0"
-    "base/panopticon_v2 knn resisc45 700 1.0 1.0"
-    "base/panopticon_v3 knn resisc45 700 1.0 1.0"
-
-    #Eurosat scale knn 12.5%: 24-31
+    #Eurosat scale knn 12.5%: 6-13
     "base/croma_s2 knn geobench_eurosat_12b 800 1.0 0.125"
     "base/softcon_13b knn geobench_eurosat_13b 900 1.0 0.125"
     "base/anysat_s2 knn geobench_eurosat_10b 100 1.0 0.125"
@@ -75,37 +51,7 @@ all_tasks=(
     "base/panopticon_v2 knn geobench_eurosat_12b 500 1.0 0.125"
     "base/panopticon_v3 knn geobench_eurosat_12b 500 1.0 0.125"
 
-    #Eurosat scale knn 25%: 32-39
-    "base/croma_s2 knn geobench_eurosat_12b 800 1.0 0.25"
-    "base/softcon_13b knn geobench_eurosat_13b 900 1.0 0.25"
-    "base/anysat_s2 knn geobench_eurosat_10b 100 1.0 0.25"
-    "base/galileo_s2_64 knn geobench_eurosat_10b 1000 1.0 0.25"
-    "base/dofa knn geobench_eurosat_12b 800 1.0 0.25"
-    "base/senpamae knn geobench_eurosat_12b 800 1.0 0.25"
-    "base/panopticon_v2 knn geobench_eurosat_12b 500 1.0 0.25"
-    "base/panopticon_v3 knn geobench_eurosat_12b 500 1.0 0.25"
-
-    #Eurosat scale knn 50%: 40-47
-    "base/croma_s2 knn geobench_eurosat_12b 800 1.0 0.5"
-    "base/softcon_13b knn geobench_eurosat_13b 900 1.0 0.5"
-    "base/anysat_s2 knn geobench_eurosat_10b 100 1.0 0.5"
-    "base/galileo_s2_64 knn geobench_eurosat_10b 1000 1.0 0.5"
-    "base/dofa knn geobench_eurosat_12b 800 1.0 0.5"
-    "base/senpamae knn geobench_eurosat_12b 800 1.0 0.5"
-    "base/panopticon_v2 knn geobench_eurosat_12b 500 1.0 0.5"
-    "base/panopticon_v3 knn geobench_eurosat_12b 500 1.0 0.5"
-
-    #Eurosat scale knn 100%: 48-55
-    "base/croma_s2 knn geobench_eurosat_12b 800 1.0 1.0"
-    "base/softcon_13b knn geobench_eurosat_13b 900 1.0 1.0" 
-    "base/anysat_s2 knn geobench_eurosat_10b 100 1.0 1.0"
-    "base/galileo_s2_64 knn geobench_eurosat_10b 1000 1.0 1.0"
-    "base/dofa knn geobench_eurosat_12b 800 1.0 1.0"
-    "base/senpamae knn geobench_eurosat_12b 800 1.0 1.0"
-    "base/panopticon_v2 knn geobench_eurosat_12b 500 1.0 1.0"
-    "base/panopticon_v3 knn geobench_eurosat_12b 500 1.0 1.0"
-    
-    #brick_kiln scale knn 12.5%: 56-63
+    #brick_kiln scale knn 12.5%: 14-21
     "base/croma_s2 knn geobench_brick_kiln_12b 800 1.0 0.125"
     "base/softcon_13b knn geobench_brick_kiln_13b 900 1.0 0.125"
     "base/anysat_s2 knn geobench_brick_kiln_10b 100 1.0 0.125"
@@ -115,7 +61,35 @@ all_tasks=(
     "base/panopticon_v2 knn geobench_brick_kiln_12b 500 1.0 0.125"
     "base/panopticon_v3 knn geobench_brick_kiln_12b 500 1.0 0.125"
 
-    #brick_kiln scale knn 25%: 64-71
+    #pv4ger_cls scale knn 12.5%: 22-27
+    "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 0.125"
+    "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 0.125"
+    "base/dofa knn geobench_pv4ger_cls 1000 1.0 0.125"
+    "base/senpamae knn geobench_pv4ger_cls 800 1.0 0.125"
+    "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 0.125" 
+    "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 0.125"
+
+
+
+    #Resisc45 scale knn 25%: 28-33
+    "base/dinov2 knn resisc45 800 1.0 0.25"
+    "base/anysat_spot knn resisc45 800 1.0 0.25"
+    "base/dofa knn resisc45 800 1.0 0.25"
+    "base/senpamae knn resisc45 800 1.0 0.25"
+    "base/panopticon_v2 knn resisc45 700 1.0 0.25"
+    "base/panopticon_v3 knn resisc45 700 1.0 0.25"
+
+    #Eurosat scale knn 25%: 34-41
+    "base/croma_s2 knn geobench_eurosat_12b 800 1.0 0.25"
+    "base/softcon_13b knn geobench_eurosat_13b 900 1.0 0.25"
+    "base/anysat_s2 knn geobench_eurosat_10b 100 1.0 0.25"
+    "base/galileo_s2_64 knn geobench_eurosat_10b 1000 1.0 0.25"
+    "base/dofa knn geobench_eurosat_12b 800 1.0 0.25"
+    "base/senpamae knn geobench_eurosat_12b 800 1.0 0.25"
+    "base/panopticon_v2 knn geobench_eurosat_12b 500 1.0 0.25"
+    "base/panopticon_v3 knn geobench_eurosat_12b 500 1.0 0.25"
+
+    #brick_kiln scale knn 25%: 42-49
     "base/croma_s2 knn geobench_brick_kiln_12b 800 1.0 0.25"
     "base/softcon_13b knn geobench_brick_kiln_13b 900 1.0 0.25"
     "base/anysat_s2 knn geobench_brick_kiln_10b 100 1.0 0.25"
@@ -125,7 +99,35 @@ all_tasks=(
     "base/panopticon_v2 knn geobench_brick_kiln_12b 500 1.0 0.25"
     "base/panopticon_v3 knn geobench_brick_kiln_12b 500 1.0 0.25"
 
-    #brick_kiln scale knn 50%: 72-79
+    #pv4ger_cls scale knn 25%: 50-55
+    "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 0.25"
+    "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 0.25"
+    "base/dofa knn geobench_pv4ger_cls 1000 1.0 0.25"
+    "base/senpamae knn geobench_pv4ger_cls 800 1.0 0.25"
+    "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 0.25" 
+    "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 0.25"
+
+
+
+    #Resisc45 scale knn 50%: 56-61
+    "base/dinov2 knn resisc45 800 1.0 0.5"
+    "base/anysat_spot knn resisc45 800 1.0 0.5"
+    "base/dofa knn resisc45 800 1.0 0.5"
+    "base/senpamae knn resisc45 800 1.0 0.5"
+    "base/panopticon_v2 knn resisc45 700 1.0 0.5"
+    "base/panopticon_v3 knn resisc45 700 1.0 0.5"
+
+    #Eurosat scale knn 50%: 62-69
+    "base/croma_s2 knn geobench_eurosat_12b 800 1.0 0.5"
+    "base/softcon_13b knn geobench_eurosat_13b 900 1.0 0.5"
+    "base/anysat_s2 knn geobench_eurosat_10b 100 1.0 0.5"
+    "base/galileo_s2_64 knn geobench_eurosat_10b 1000 1.0 0.5"
+    "base/dofa knn geobench_eurosat_12b 800 1.0 0.5"
+    "base/senpamae knn geobench_eurosat_12b 800 1.0 0.5"
+    "base/panopticon_v2 knn geobench_eurosat_12b 500 1.0 0.5"
+    "base/panopticon_v3 knn geobench_eurosat_12b 500 1.0 0.5"
+
+    #brick_kiln scale knn 50%: 70-77
     "base/croma_s2 knn geobench_brick_kiln_12b 800 1.0 0.5"
     "base/softcon_13b knn geobench_brick_kiln_13b 900 1.0 0.5"
     "base/anysat_s2 knn geobench_brick_kiln_10b 100 1.0 0.5"
@@ -135,7 +137,36 @@ all_tasks=(
     "base/panopticon_v2 knn geobench_brick_kiln_12b 500 1.0 0.5"
     "base/panopticon_v3 knn geobench_brick_kiln_12b 500 1.0 0.5"
 
-    #brick_kiln scale knn 100%: 80-87
+    #pv4ger_cls scale knn 50%: 78-83
+    "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 0.5"
+    "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 0.5"
+    "base/dofa knn geobench_pv4ger_cls 1000 1.0 0.5"
+    "base/senpamae knn geobench_pv4ger_cls 800 1.0 0.5"
+    "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 0.5" 
+    "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 0.5"
+
+
+    #Resisc45 scale knn 100%: 84-89
+    "base/dinov2 knn resisc45 800 1.0 1.0"
+    "base/anysat_spot knn resisc45 800 1.0 1.0"
+    "base/dofa knn resisc45 800 1.0 1.0"
+    "base/senpamae knn resisc45 800 1.0 1.0"
+    "base/panopticon_v2 knn resisc45 700 1.0 1.0"
+    "base/panopticon_v3 knn resisc45 700 1.0 1.0"    
+    
+
+    #Eurosat scale knn 100%: 90-97
+    "base/croma_s2 knn geobench_eurosat_12b 800 1.0 1.0"
+    "base/softcon_13b knn geobench_eurosat_13b 900 1.0 1.0" 
+    "base/anysat_s2 knn geobench_eurosat_10b 100 1.0 1.0"
+    "base/galileo_s2_64 knn geobench_eurosat_10b 1000 1.0 1.0"
+    "base/dofa knn geobench_eurosat_12b 800 1.0 1.0"
+    "base/senpamae knn geobench_eurosat_12b 800 1.0 1.0"
+    "base/panopticon_v2 knn geobench_eurosat_12b 500 1.0 1.0"
+    "base/panopticon_v3 knn geobench_eurosat_12b 500 1.0 1.0" 
+    
+
+    #brick_kiln scale knn 100%: 98-105
     "base/croma_s2 knn geobench_brick_kiln_12b 800 1.0 1.0"
     "base/softcon_13b knn geobench_brick_kiln_13b 900 1.0 1.0"
     "base/anysat_s2 knn geobench_brick_kiln_10b 100 1.0 1.0"
@@ -143,31 +174,8 @@ all_tasks=(
     "base/dofa knn geobench_brick_kiln_12b 800 1.0 1.0"
     "base/senpamae knn geobench_brick_kiln_12b 800 1.0 1.0"
     "base/panopticon_v2 knn geobench_brick_kiln_12b 500 1.0 1.0"
-    "base/panopticon_v3 knn geobench_brick_kiln_12b 500 1.0 1.0"
-
-    #pv4ger_cls scale knn 12.5%: 88-93
-    "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 0.125"
-    "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 0.125"
-    "base/dofa knn geobench_pv4ger_cls 1000 1.0 0.125"
-    "base/senpamae knn geobench_pv4ger_cls 800 1.0 0.125"
-    "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 0.125" 
-    "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 0.125"
-
-    #pv4ger_cls scale knn 25%: 94-99
-    "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 0.25"
-    "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 0.25"
-    "base/dofa knn geobench_pv4ger_cls 1000 1.0 0.25"
-    "base/senpamae knn geobench_pv4ger_cls 800 1.0 0.25"
-    "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 0.25" 
-    "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 0.25"
-
-    #pv4ger_cls scale knn 50%: 100-105
-    "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 0.5"
-    "base/anysat_spot knn geobench_pv4ger_cls 500 1.0 0.5"
-    "base/dofa knn geobench_pv4ger_cls 1000 1.0 0.5"
-    "base/senpamae knn geobench_pv4ger_cls 800 1.0 0.5"
-    "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 0.5" 
-    "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 0.5"
+    "base/panopticon_v3 knn geobench_brick_kiln_12b 500 1.0 1.0"    
+    
 
     #pv4ger_cls scale knn 100%: 106-111
     "base/dinov2 knn geobench_pv4ger_cls 1000 1.0 1.0"
@@ -195,7 +203,8 @@ epochs=50
 num_workers=4
 check_val_every_n_epoch=10
 val_subset=-1
-nb_knn="[1,3,5,10,15,20,25,30]"
+# nb_knn="[1,3,5,10,15,20,25,30]"
+nb_knn="[20]"
 
 export CUDA_VISIBLE_DEVICES=$cuda_device
 
@@ -216,7 +225,7 @@ for task_id in "${task_ids[@]}"; do
     cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py \
         model=$model \
         dataset=$ds \
-        output_dir=$ODIR/$exp_base_name/$ds/$model/$training_mode/ \
+        output_dir=$ODIR/$exp_base_name/$scale/$ds/$model/$training_mode/ \
         +model.training_mode=$training_mode \
         ++batch_size=$batch_size \
         num_workers=$num_workers \

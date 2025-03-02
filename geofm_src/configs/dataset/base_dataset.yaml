@@ -16,3 +16,4 @@ input_key: null
 sequence_length: null #for time series datasets: T goes into the C dimension
 band_gsds: null #for senpamae: list of GSDs for each band
 scale: 1.0 #for downscaling images
+normalize_target: true

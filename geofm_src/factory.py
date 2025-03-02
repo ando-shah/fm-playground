@@ -11,7 +11,7 @@ from geofm_src.datasets.hyperview_wrapper import HyperviewDataset
 from geofm_src.datasets.dummy_dataset import DummyWrapper
 from geofm_src.engine.model import EvalModelWrapper
 from geofm_src.datasets.fmow_wrapper import FmowDataset
-
+from geofm_src.datasets.spacenet1_wrapper import SpaceNet1Dataset
 model_registry = {
     "croma": models.CromaWrapper,
     "dinov2": models.DinoV2Wrapper,
@@ -39,6 +39,7 @@ dataset_registry = {
     "hyperview": HyperviewDataset,
     "fmow": FmowDataset,
     "dummy": DummyWrapper,
+    "spacenet1": SpaceNet1Dataset,
     # Add other dataset mappings here
 }
 

@@ -258,10 +258,22 @@ class ClsDataAugmentation(torch.nn.Module):
     )
 
 
-    def __init__(self, split, size, source_chn_ids, band_ids=None, bands="all", num_channels=12):
+    def __init__(self, split, size, source_chn_ids, band_ids=None, bands="all", num_channels=12, quantile_norm: bool = False):
+        """Initialize the data augmentation pipeline.
+        
+        Args:
+            split: train/test split
+            size: image size
+            bands: which bands to use, one of {s1, s2, rgb, all}
+            source_chn_ids: channel ids of the source image
+            band_ids: which bands to sample, if None, all bands are used
+            num_channels: number of channels to output
+            quantile_norm: whether to perform quantile normalization or standard z-score normalization
+        """
         super().__init__()
 
         self.num_channels = num_channels
+        self.quantile_norm = quantile_norm
 
         # if bands == "all":
         #     mins = self.mins
@@ -314,16 +326,15 @@ class ClsDataAugmentation(torch.nn.Module):
                 self.output_chn_ids = source_chn_ids
 
 
+        # normalization is handled separately
         if split == "train":
             self.transforms.extend([
-                K.Normalize(mean=self.mean, std=self.std),
                 K.RandomResizedCrop(size=size, scale=(0.8, 1.0)),
                 K.RandomHorizontalFlip(p=0.5),
                 K.RandomVerticalFlip(p=0.5),
             ])
         else:
             self.transforms.extend([
-                K.Normalize(mean=self.mean, std=self.std),
                 K.Resize(size=size, align_corners=True),
             ])
 
@@ -339,7 +350,9 @@ class ClsDataAugmentation(torch.nn.Module):
             sample["image"] = sample["image"][1:4, ...].flip(dims=(0,))
             # get in rgb order and then normalization can be applied
 
-        x_out = self.transform(sample["image"]).squeeze(0)
+        # do normalization in a separate function
+        x_normed = self.normalize(sample["image"])
+        x_out = self.transform(x_normed).squeeze(0)
 
         if self.bands == "s1":
             # flip the channel ordering for s1 bands, because torchgeo returns them in VH, VV order and models expect VV, VH order
@@ -354,13 +367,68 @@ class ClsDataAugmentation(torch.nn.Module):
         
         return x_out, sample["label"]
 
+    @torch.no_grad()
+    def normalize(self, img: torch.Tensor) -> torch.Tensor:
+        """Normalize the input image."""
+        if self.quantile_norm:
+            img = self.quantile_normalize(img)
+        else:
+            img = K.Normalize(mean=self.mean, std=self.std)(img)
+        return img
+
+    @torch.no_grad()
+    def quantile_normalize(self, img: torch.Tensor) -> torch.Tensor:
+        """Quantile normalize the input image."""
+
+        def channel_norm(self, img: torch.Tensor, mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
+            """Normalize an image channel."""
+            min_value = mean - 2 * std
+            max_value = mean + 2 * std
+            img = (img - min_value) / (max_value - min_value)
+            img = torch.clamp(img, 0, 1)
+            return img
+
+        if self.bands == 's1':
+            sample_img = sample["image"]
+            ### normalize s1
+            self.max_q = torch.quantile(sample_img.reshape(2,-1),0.99,dim=1)      
+            self.min_q = torch.quantile(sample_img.reshape(2,-1),0.01,dim=1)
+            img_bands = []
+            for b in range(2):
+                img = sample_img[b,:,:].clone()
+                ## outlier
+                max_q = self.max_q[b]
+                min_q = self.min_q[b]            
+                img = torch.clamp(img, min_q, max_q)
+                ## normalize
+                img = self.channel_norm(img,self.mean[b],self.std[b])         
+                img_bands.append(img)
+            sample_img = torch.stack(img_bands,dim=0) # VV,VH (w,h,c)
+        elif self.bands == 's2':
+            sample_img = sample["image"]
+            img_bands = []
+            for b in range(12):
+                img = sample_img[b,:,:].clone()
+                ## normalize
+                img = self.channel_norm(img,self.mean[b],self.std[b])         
+                img_bands.append(img)
+                if b==9:
+                    # pad zero to B10
+                    img_bands.append(torch.zeros_like(img))
+            sample_img = torch.stack(img_bands,dim=0)
+
+        return sample_img
+
 
 class BenV2Dataset(BaseDataset):
     def __init__(self, config):
+        """Initialize the BigEarthNetv2 dataset."""
         super().__init__(config)
         self.bands = config.bands
         self.num_classes = config.num_classes
         self.num_channels = config.num_channels
+
+        self.quantile_norm = config.get("quantile_norm", False)
 
         if self.bands == "rgb":
             # start with rgb and extract later
@@ -370,10 +438,10 @@ class BenV2Dataset(BaseDataset):
 
     def create_dataset(self):
         train_transform = ClsDataAugmentation(
-            split="train", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids, num_channels=self.num_channels
+            split="train", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids, num_channels=self.num_channels, quantile_norm=self.quantile_norm
         )
         eval_transform = ClsDataAugmentation(
-            split="test", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids, num_channels=self.num_channels
+            split="test", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids, num_channels=self.num_channels, quantile_norm=self.quantile_norm
         )
 
         # Override the config with the transformed channel ids

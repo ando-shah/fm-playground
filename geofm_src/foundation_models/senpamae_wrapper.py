@@ -1,3 +1,4 @@
+from einops import rearrange
 import torch
 import os
 from torchvision.datasets.utils import download_url
@@ -25,8 +26,8 @@ class SenPaMAEWrapper(EvalModelWrapper):
         encoder = vit_base_patch16(
             image_size=model_config.image_resolution,
             num_channels=self.data_config.num_channels,
-            emb_dim=model_config.embed_dim,
-        )
+            emb_dim=model_config.embed_dim,)
+        self.patch_size = 16
 
         # download weights
         if model_config.get("pretrained_path", None):
@@ -77,7 +78,7 @@ class SenPaMAEWrapper(EvalModelWrapper):
 
         band_gsds = self.data_config.band_gsds
         if band_gsds is None:
-            band_gsds = [10]*self.model_config.num_channels
+            band_gsds = [10]*self.data_config.num_channels
             logger.warning("No band GSDs provided, using default values")
         # Convert band_gsds to numpy array: always 4 bands
         self.band_gsds = np.array(band_gsds, dtype=np.float32)
@@ -126,6 +127,19 @@ class SenPaMAEWrapper(EvalModelWrapper):
         self.cache = []
 
         return blocks_list
+
+    def get_segm_blks(self, x):
+        # get transformer blocks and average over the channel dimension
+        B, C, H, W = x.shape
+        x = self.get_blocks(x)
+
+        h = H // self.patch_size
+        w = W // self.patch_size
+
+        out = [rearrange(blk, 'b (nchn h w) d -> b d h w nchn', h=h, w=w, nchn=C) for blk in x]
+        out = [blk.mean(dim=4) for blk in out]
+
+        return out
 
     def default_blocks_to_featurevec(self, block_list):
         # no official recommendation by the authors, using this for now

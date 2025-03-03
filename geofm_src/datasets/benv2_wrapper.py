@@ -377,10 +377,10 @@ class ClsDataAugmentation(torch.nn.Module):
         return img
 
     @torch.no_grad()
-    def quantile_normalize(self, img: torch.Tensor) -> torch.Tensor:
+    def quantile_normalize(self, sample_img) -> torch.Tensor:
         """Quantile normalize the input image."""
 
-        def channel_norm(self, img: torch.Tensor, mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
+        def channel_norm(img: torch.Tensor, mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
             """Normalize an image channel."""
             min_value = mean - 2 * std
             max_value = mean + 2 * std
@@ -389,7 +389,7 @@ class ClsDataAugmentation(torch.nn.Module):
             return img
 
         if self.bands == 's1':
-            sample_img = sample["image"]
+            # sample_img = sample["image"]
             ### normalize s1
             self.max_q = torch.quantile(sample_img.reshape(2,-1),0.99,dim=1)      
             self.min_q = torch.quantile(sample_img.reshape(2,-1),0.01,dim=1)
@@ -401,16 +401,16 @@ class ClsDataAugmentation(torch.nn.Module):
                 min_q = self.min_q[b]            
                 img = torch.clamp(img, min_q, max_q)
                 ## normalize
-                img = self.channel_norm(img,self.mean[b],self.std[b])         
+                img = channel_norm(img,self.mean[b],self.std[b])         
                 img_bands.append(img)
             sample_img = torch.stack(img_bands,dim=0) # VV,VH (w,h,c)
         elif self.bands == 's2':
-            sample_img = sample["image"]
+            # sample_img = sample["image"]
             img_bands = []
             for b in range(12):
                 img = sample_img[b,:,:].clone()
                 ## normalize
-                img = self.channel_norm(img,self.mean[b],self.std[b])         
+                img = channel_norm(img,self.mean[b],self.std[b])         
                 img_bands.append(img)
                 if b==9:
                     # pad zero to B10
@@ -429,6 +429,7 @@ class BenV2Dataset(BaseDataset):
         self.num_channels = config.num_channels
 
         self.quantile_norm = config.get("quantile_norm", False)
+        print('Using quantile norm: ', self.quantile_norm)
 
         if self.bands == "rgb":
             # start with rgb and extract later

@@ -28,6 +28,7 @@ class LightningTask(LightningModule):
         self.args = args  # args for optimization params
         self.data_config = data_config  # dataset_config
         self.training_mode = model_config.training_mode
+        self.replace_pe = model_config.get('replace_pe', False)
         self.save_hyperparameters()
 
         self.train_metrics = build_metric(
@@ -37,6 +38,9 @@ class LightningTask(LightningModule):
         self.test_metrics = build_metric(
             args.task_kwargs.val, num_classes=data_config.num_classes, key_prefix='test/') 
 
+        if self.replace_pe:
+            self.new_pe = self.encoder.replace_pe(data_config.num_channels)
+            print('Replaced PE!')
 
     def freeze_and_return_params(self):
         """ freeze & unfreeze weights according to self.training_mode, also
@@ -129,6 +133,14 @@ class LightningTask(LightningModule):
             },
         }
 
+    def _filter_named_params(self, named_params, targets):
+        out = []
+        for name, param in named_params:
+            for t in targets:
+                if t in name:
+                    out.append((name, param))
+        return out
+
 
 class LightningClsRegTask(LightningTask):
 
@@ -136,17 +148,10 @@ class LightningClsRegTask(LightningTask):
 
     def __init__(self, args, model_config, data_config, encoder: EvalModelWrapper):
         super().__init__(args, model_config, data_config, encoder)
-        task = data_config.task
-
-        self.replace_pe = model_config.replace_pe
 
         self.criterion = build_criterion(args.task_kwargs.criterion)
         # Batchnorm + Linear
         self.linear_classifier = LinearHead(in_features=model_config.embed_dim, num_classes=data_config.num_classes)
-
-        if self.replace_pe:
-            self.new_pe = self.encoder.replace_pe(data_config.num_channels)
-            print('Replaced PE!')
 
     def freeze_and_return_params(self):
         """ freeze / unfreeze weights & return parameters to optimize 
@@ -228,14 +233,6 @@ class LightningClsRegTask(LightningTask):
             out = [p for _, p in out]
         return out
 
-    def _filter_named_params(self, named_params, targets):
-        out = []
-        for name, param in named_params:
-            for t in targets:
-                if t in name:
-                    out.append((name, param))
-        return out
-
 
 class LightningSegmentationTask(LightningTask):
 
@@ -293,12 +290,17 @@ class LightningSegmentationTask(LightningTask):
         self.unfreeze(self.decoder)
         self.unfreeze(self.aux_head)
 
-        return (
+        params_to_optimize = (
             list(self.neck.parameters())
             + list(self.decoder.parameters())
             + list(self.aux_head.parameters()))
 
-        
+        if self.replace_pe:
+            self.unfreeze(self.new_pe)
+            params_to_optimize += list(self.new_pe.parameters())
+
+        return params_to_optimize
+
     def forward(self, images):
         """Forward pass of the model."""
         if self.training_mode == 'frozen_backbone':

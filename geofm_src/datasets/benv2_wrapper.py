@@ -422,6 +422,7 @@ class ClsDataAugmentation(torch.nn.Module):
 
 class BenV2Dataset(BaseDataset):
     def __init__(self, config):
+        """Initialize the BigEarthNetv2 dataset."""
         super().__init__(config)
         self.bands = config.bands
         self.num_classes = config.num_classes

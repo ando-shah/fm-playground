@@ -108,3 +108,9 @@ class EvalModelWrapper(nn.Module):
         out = [rearrange(blk, "b (h w) d -> b d h w", h=patch_size, w=patch_size) 
                for blk in block_list]
         return out
+    
+    def update_data_config(self, data_config):
+        """
+        Updates the data config for the model.
+        """
+        raise NotImplementedError()

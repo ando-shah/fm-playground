@@ -249,6 +249,7 @@ def eval_knn(
     n_tries=1,
     num_classes = -1, 
     normmode_list = [False],
+    val_data_config = None,
 ):
 
     logger.info("Extracting features for train set...")
@@ -290,6 +291,14 @@ def eval_knn(
     model_with_knn = torch.nn.Sequential(model, knn_module_dict)
 
     # ============ evaluation ... ============
+    if val_data_config is not None:
+        if hasattr(model, 'encoder') and hasattr(model.encoder, 'update_data_config'):
+            logger.info("Updating model.encoder with validation data config for validation")
+            model.encoder.update_data_config(val_data_config)
+        else:
+            logger.warning("Model does not have update_data_config method, cannot update data config for KNN evaluation")
+
+
     logger.info("Start the k-NN classification.")
     _, results_dict = evaluate(model_with_knn, val_dataloader, postprocessors, metrics, device)
     logger.debug('Finished KNN classification')
@@ -326,6 +335,7 @@ def eval_knn_with_model(
     n_per_class_list=[-1],
     n_tries=1,
     num_classes = -1,
+    val_data_config = None,
 ):
 
     model = KnnModelWrapper(model)
@@ -346,6 +356,7 @@ def eval_knn_with_model(
             n_per_class_list=n_per_class_list,
             n_tries=n_tries,
             num_classes = num_classes,
+            val_data_config = val_data_config,
         )
 
 

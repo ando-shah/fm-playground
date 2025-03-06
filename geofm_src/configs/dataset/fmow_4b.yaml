@@ -1,5 +1,6 @@
 defaults:
   - base_dataset
+  - wv_4b
 
 dataset_type: fmow
 task: classification

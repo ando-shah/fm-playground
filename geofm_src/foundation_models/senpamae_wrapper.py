@@ -58,7 +58,11 @@ class SenPaMAEWrapper(EvalModelWrapper):
     def _cache_block(self,x):
         self.cache.append(x)
 
-
+    def update_data_config(self, data_config):
+        logger.info('Updating data config')
+        self.data_config = data_config
+        self.process_srfs()
+        
     def process_srfs(self):
         # SRF loading
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -82,8 +86,7 @@ class SenPaMAEWrapper(EvalModelWrapper):
             logger.warning("No band GSDs provided, using default values")
         # Convert band_gsds to numpy array: always 4 bands
         self.band_gsds = np.array(band_gsds, dtype=np.float32)
-        print(f"Band GSDs: {self.band_gsds}")
-
+        
         self.band_gsds = torch.tensor(self.band_gsds).float().unsqueeze(0)
         assert self.band_gsds.shape[1] == self.data_config.num_channels, f"Band GSDs size {self.band_gsds.shape[1]} not equal to {self.data_config.num_channels} channels"
 

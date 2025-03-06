@@ -1,0 +1,11 @@
+num_channels: 4
+wavelengths_mean_nm: [482, 547, 665, 841]
+wavelengths_sigma_nm: [45, 58, 36, 84]
+band_gsds: [1, 1, 1, 1]
+senpamae_channels:
+  - 1
+  - 2
+  - 4
+  - 6
+
+senpamae_srf_name: rfs_wv23_recon.npy

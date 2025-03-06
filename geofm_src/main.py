@@ -140,6 +140,23 @@ def main(cfg: DictConfig):
     # create model
     model_wrapper = create_model(cfg.model, cfg.dataset)
 
+    # If dataset_test is specified, load its config for testing
+    if hasattr(cfg, 'dataset_test') and cfg.dataset_test:
+        # Use hydra.compose with an explicit override to get the test dataset config
+        overrides = [f"dataset={cfg.dataset_test}"]
+        test_config = hydra.compose(config_name="config", overrides=overrides)
+        
+        if test_config and hasattr(test_config, 'dataset'):
+            print(f"Loaded test data config for dataset: {cfg.dataset_test}")
+            
+            # Extract the dataset part of the config
+            cfg.dataset_test = test_config.dataset
+            cfg.dataset_test.image_resolution = cfg.model.image_resolution
+
+        else:
+            print(f"Warning: Failed to load test config for {cfg.dataset_test}")
+
+
     # create datamodule
     cfg.dataset.image_resolution = cfg.model.image_resolution
     data_module = BenchmarkDataModule(
@@ -148,6 +165,7 @@ def main(cfg: DictConfig):
         num_workers=cfg.num_workers,
         pin_memory=cfg.pin_mem,
         seed=cfg.seed,
+        dataset_test_config=cfg.dataset_test,
     )
 
 
@@ -352,7 +370,9 @@ def main(cfg: DictConfig):
                 autocast_dtype = torch.bfloat16,
                 metric_cfg = cfg.task_kwargs.val,
                 dl_cfg = dl_cfg,
-                num_classes = cfg.dataset.num_classes,)
+                num_classes = cfg.dataset.num_classes,
+                val_data_config = cfg.dataset_test, #contains the any-sensor model configs for the test set
+                )
 
         else :
             raise ValueError(f'Unknown training_mode: {training_mode}')

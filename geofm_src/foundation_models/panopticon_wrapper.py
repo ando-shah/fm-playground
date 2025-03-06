@@ -1,6 +1,8 @@
 import torch
 from geofm_src.engine.model import EvalModelWrapper
+import logging
 
+logger = logging.getLogger()
 
 class PanopticonWrapper(EvalModelWrapper):
 
@@ -24,15 +26,38 @@ class PanopticonWrapper(EvalModelWrapper):
             self.register_buffer('chn_ids',
                 torch.tensor(list(zip(wavelengths, sigmas))).unsqueeze(0)) # (1, C, 2)
             print(self.chn_ids, self.chn_ids.shape)
-    
+
+    def update_data_config(self, data_config):
+        logger.info('Updating data config')
+        self.data_config = data_config
+        wavelengths = self.data_config.wavelengths_mean_nm
+        sigmas = self.data_config.get('wavelengths_sigma_nm', None)
+        
+        # Determine the current device of the model
+        # Check if the model has parameters or buffers to get their device
+        device = next(self.parameters(), next(self.buffers(), torch.device('cpu'))).device
+        logger.info(f'Model is on device: {device}')
+        if device == torch.device('cpu'):
+            logger.warning('Model is on CPU, cannot register buffer on GPU')
+            return
+        
+        if not self.model_config.get('full_spectra', False) and sigmas is not None:
+            # Create tensor on the same device as the model
+            chn_ids = torch.tensor([wl for wl in wavelengths], device=device).unsqueeze(0)  # (1, C)
+            self.register_buffer('chn_ids', chn_ids)
+        else:
+            print('Full Spectra Enabled')
+            # Create tensor on the same device as the model
+            chn_ids = torch.tensor(list(zip(wavelengths, sigmas)), device=device).unsqueeze(0)  # (1, C, 2)
+            self.register_buffer('chn_ids', chn_ids)
+            print(self.chn_ids, self.chn_ids.shape)
+
     def get_blocks(self, x):
         # x = dict(imgs=x, chn_ids=self.chn_ids.expand(x.size(0), -1))
         if self.chn_ids.dim() == 2:  # (1, C)
             x = dict(imgs=x, chn_ids=self.chn_ids.expand(x.size(0), -1))  # Expand to (B, C)
         else:  # (1, C, 2)
             x = dict(imgs=x, chn_ids=self.chn_ids.expand(x.size(0), -1, -1))  # Expand to (B, C, 2)
-
-
 
         if self.encoder.chunked_blocks:
             x_blocks = self.encoder._get_intermediate_layers_chunked(x, self.blk_indices)

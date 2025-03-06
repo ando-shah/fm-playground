@@ -2,6 +2,7 @@ defaults:
 - model: null
 - dataset: null
 - _self_
+- dataset_test: null
 
 
 weight_decay: 0.0001

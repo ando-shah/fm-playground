@@ -7,7 +7,9 @@ from torchvision.datasets.utils import download_url
 
 from geofm_src.engine.model import EvalModelWrapper
 from einops import rearrange
+import logging
 
+logger = logging.getLogger(__name__)
 
 
 class DofaWrapper(EvalModelWrapper):
@@ -69,6 +71,18 @@ class DofaWrapper(EvalModelWrapper):
         blocks = self.cache
         self.cache = [] 
         return blocks
+    
+    def update_data_config(self, data_config):
+        logger.info('Updating data config')
+        self.data_config = data_config
+        wavelengths_mean_microns = []
+        for wl in self.data_config['wavelengths_mean_nm']:
+            if wl > 0:
+                wl = wl / 1e3
+            else:
+                wl = 5.6 # dofa uses 5600 nm for all SAR channels
+            wavelengths_mean_microns.append(wl)
+        self.wavelengths_mean_microns = wavelengths_mean_microns
 
     # def default_input_to_feature_list(self, x: Tensor) -> list[torch.Tensor]:
     #     block_list = self.get_blocks(x)

@@ -44,13 +44,16 @@ dataset_registry = {
 }
 
 
-def create_dataset(config_data):
+def create_dataset(config_data, config_data_test=None):
     dataset_type = config_data.dataset_type
     dataset_class = dataset_registry.get(dataset_type)
     if dataset_class is None:
         raise ValueError(f"Dataset type '{dataset_type}' not found.")
 
-    dataset = dataset_class(config_data)
+    if config_data_test is None:
+        dataset = dataset_class(config_data)
+    else:
+        dataset = dataset_class(config_data, config_data_test)
 
     return dataset.create_dataset()
 

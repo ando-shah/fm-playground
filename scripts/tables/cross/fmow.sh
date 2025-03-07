@@ -3,7 +3,7 @@ export $(cat /home/ando/fm-playground/.env)
 export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
-fastdevrun=no
+fastdevrun=bsz
 exp_base_name=cross_sens_test
 overwrite=True
 
@@ -31,25 +31,51 @@ eurosat_train_percent=1.0
 
 all_tasks=(
 
-    #0-2
+    #A: 8b:4b
+    # Baselines: 8b -> 0 to 2
+    "base/panopticon_v3 knn fmow_8b fmow_8b 800 0.01"
+    "base/dofa knn fmow_8b fmow_8b 2000 0.1"
+    "base/senpamae knn fmow_8b fmow_8b 2000 0.1"
+
+    # Baselines: 4b -> 3 to 5
+    "base/panopticon_v3 knn fmow_4b fmow_4b 800 0.1"
+    "base/dofa knn fmow_4b fmow_4b 2000 0.1"
+    "base/senpamae knn fmow_4b fmow_4b 2000 0.1"
+
+    # Baselines: s2 -> 6 to 8
+    "base/panopticon_v3 knn fmow_s2 fmow_s2 350 0.01"
+    "base/dofa knn fmow_s2 fmow_s2 1000 0.01"
+    "base/senpamae knn fmow_s2 fmow_s2 300 0.1"
+
+    #A: 8b:4b -> 9 to 11
     "base/panopticon knn fmow_8b fmow_4b 800 0.1"
     "base/dofa knn fmow_8b fmow_4b 2000 0.1"
     "base/senpamae knn fmow_8b fmow_4b 2000 0.1"
 
-    #3-5
+    #B: 4b:8b -> 12 to 14
     "base/panopticon knn fmow_4b fmow_8b 800 0.1"
     "base/dofa knn fmow_4b fmow_8b 2000 0.1"
     "base/senpamae knn fmow_4b fmow_8b 2000 0.1"
 
-    #6-8
-    "base/panopticon_v3 knn fmow_s2 fmow_8b 800 0.1"
+    #C: 8b:s2 -> 15 to 17
+    "base/panopticon_v3 knn fmow_s2 fmow_8b 350 0.1"
     "base/dofa knn fmow_s2 fmow_8b 2000 0.1"
     "base/senpamae knn fmow_s2 fmow_8b 2000 0.1"
 
-    #9-11
-    "base/panopticon_v3 knn fmow_8b fmow_s2 800 0.1"
-    "base/dofa knn fmow_8b fmow_s2 2000 0.1"
-    "base/senpamae knn fmow_8b fmow_s2 2000 0.1"
+    #D: s2:8b -> 18 to 20
+    "base/panopticon_v3 knn fmow_8b fmow_s2 350 0.1"
+    "base/dofa knn fmow_8b fmow_s2 1000 0.1"
+    "base/senpamae knn fmow_8b fmow_s2 300 0.1"
+
+    #E: 4b:s2 -> 21 to 23
+    "base/panopticon knn fmow_4b fmow_s2 800 0.1"
+    "base/dofa knn fmow_4b fmow_s2 2000 0.1"
+    "base/senpamae knn fmow_4b fmow_s2 2000 0.1"
+
+    #F: s2:4b -> 24 to 26   
+    "base/panopticon knn fmow_s2 fmow_4b 350 0.1"
+    "base/dofa knn fmow_s2 fmow_4b 1000 0.1"
+    "base/senpamae knn fmow_s2 fmow_4b 300 0.1"
     
 
     #BENv2: 10%

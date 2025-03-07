@@ -13,7 +13,7 @@ from tifffile import imread
 import kornia.augmentation as K
 import traceback
 from .base_dataset import BaseDataset
-
+from multiprocessing import Manager
 logger = logging.getLogger()
 
 class FmowBenchmarkDataset(NonGeoDataset):
@@ -38,7 +38,8 @@ class FmowBenchmarkDataset(NonGeoDataset):
                                  'WORLDVIEW03_VNIR' : 'fmow_wv23',
                                  'GEOEYE01': 'fmow_qbge',
                                  'QUICKBIRD02': 'fmow_qbge',
-                                 'fmow_rgb': 'fmow_rgb'
+                                 'fmow_rgb': 'fmow_rgb',
+                                 'S2': 'fmow_s2'
                                 }
     RGB_CHANNELS: dict = {
         'fmow_s2': [3, 2, 1],
@@ -97,15 +98,22 @@ class FmowBenchmarkDataset(NonGeoDataset):
         self.torch_dtype, self.np_dtype = torch_dtype, np_dtype
         logger.info(f'output_dtype: {output_dtype}')
 
-        # read file metainfo
-        if split in ['train', 'val']: 
-            metadata_path = os.path.join(root, f'fmow/metadata_v2/fmow_{split}.parquet')
-        elif split is None: #pick train
-            metadata_path = os.path.join(root, 'fmow/metadata_v2/fmow_train.parquet')
-        elif split == 'test':
-            metadata_path = os.path.join(root, 'fmow/metadata_v2/fmow_test_gt.parquet')
+        #check if keep_sensors == ['S2']
+        if keep_sensors == ['S2']:
+            if split in ['train', 'val']: 
+                metadata_path = os.path.join(root, f'fmow-sentinel/metadata_v2/fmows_{split}_cleaned.parquet')
+            elif split == 'test':
+                metadata_path = os.path.join(root, 'fmow-sentinel/metadata_v2/fmows_test_gt_cleaned.parquet')
+            else:
+                metadata_path = os.path.join(root, os.path.expandvars(split))
         else:
-            metadata_path = os.path.join(root, os.path.expandvars(split))
+            # read file metainfo
+            if split in ['train', 'val']: 
+                metadata_path = os.path.join(root, f'fmow/metadata_v2/fmow_{split}.parquet')
+            elif split == 'test':
+                metadata_path = os.path.join(root, 'fmow/metadata_v2/fmow_test_gt.parquet')
+            else:
+                metadata_path = os.path.join(root, os.path.expandvars(split))
 
         self.df = pd.read_parquet(metadata_path)
         
@@ -119,25 +127,35 @@ class FmowBenchmarkDataset(NonGeoDataset):
         self.max_img_size = max_img_size
         self.keep_sensors = keep_sensors
         self.split = split
-        if not self.return_rgb:
-            self.df = self.df[self.df['ms_sensor_platform_name'].isin(self.keep_sensors)]
-        else:
-            self.df = self.df[self.df['rgb_sensor_platform_name'].isin(self.keep_sensors)]
+        self.s2 = self.keep_sensors == ['S2']
+        
+
+        # only do this when keep_sensors is not S2
+        if not self.s2:
+            if not self.return_rgb:
+                self.df = self.df[self.df['ms_sensor_platform_name'].isin(self.keep_sensors)]
+            else:
+                self.df = self.df[self.df['rgb_sensor_platform_name'].isin(self.keep_sensors)]
             #filter out all rows where rgb_is_corrupt is True
             # self.df = self.df[self.df['rgb_is_corrupt'] == False]
             logger.info(f'RGB Mode')
         self._subset_df()
 
         self.log_stats()
-        self.problematic_ids = []
+        # self.problematic_ids = []
+        # Initialize a thread-safe list for problematic IDs
+        self._manager = Manager()
+        self.problematic_ids = self._manager.list()
 
         if self.normalize:
             logger.info('Normalizing images')
             self.channelwise_transforms = self._build_ch_transforms()
 
+        logger.info(f'Setting up {self.split} split with {self.num_channels} channels')
+
     def _subset_df(self):
         # remove row in PROBLEMATIC_IDS
-        if self.split in self.PROBLEMATIC_IDS:
+        if self.split in self.PROBLEMATIC_IDS and not self.s2:
             # Get problematic IDs only for matching split and channel count
             pids = self.PROBLEMATIC_IDS[self.split].get(self.num_channels, [])
             print(f'problematic_ids for {self.num_channels} channels: {pids}')
@@ -158,14 +176,19 @@ class FmowBenchmarkDataset(NonGeoDataset):
 
     def log_stats(self):
         sensor_counts = {sensor: 0 for sensor in self.sensor_name_mapping.keys()}
-        for sensor in self.sensor_name_mapping.keys():
-            sensor_counts[sensor] = self.df['ms_sensor_platform_name'].apply(lambda x: sensor in x).sum()
+        if not self.s2:
+            for sensor in self.sensor_name_mapping.keys():
+                sensor_counts[sensor] = self.df['ms_sensor_platform_name'].apply(lambda x: sensor in x).sum()
+        else:
+            sensor_counts['fmow_s2'] = len(self.df)
         logger.info(f'Dataset size: {self.__len__()}, sensor counts: {sensor_counts}')
 
 
     def _load_img(self, path) -> torch.Tensor:
         path = os.path.join(self.root, path)
         return torch.from_numpy(imread(path).astype(self.np_dtype)).permute(2,0,1)
+    
+    
 
     def _get_label(self, id:str):
         #given a string id, return the index of the label in the CLASS_NAMES list
@@ -183,7 +206,10 @@ class FmowBenchmarkDataset(NonGeoDataset):
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
 
-        if self.return_rgb:
+        if self.s2:
+            key = 'ms_path'
+            ds_name, sensor = 'fmow_s2', 'fmow_s2'
+        elif self.return_rgb:
             key = 'rgb_path'
             ds_name, sensor = 'fmow_rgb', 'fmow_rgb'
         else:
@@ -194,7 +220,6 @@ class FmowBenchmarkDataset(NonGeoDataset):
         except Exception as e:
             faulty_path = os.path.join(self.root, row[key])
             full_traceback = traceback.format_exc()
-
             logger.info(f'Error loading image: {faulty_path}')
             logger.info(full_traceback)
             # if self.faulty_imgs_file is not None:
@@ -204,17 +229,19 @@ class FmowBenchmarkDataset(NonGeoDataset):
             #         f.write('file: ' + faulty_path + '\n')
             #         f.write(full_traceback)
             self.problematic_ids.append(row['id'])
+            # print(f"[{idx}] Error loading image: {faulty_path}")
+            logger.info(f"[{idx}] Error loading image: {faulty_path} | pIDs: {len(self.problematic_ids)}")
             return None, None
-        chn_id = self.chn_ids[ds_name]
+            # return torch.zeros(self.num_channels, 224, 224), 0
+        
 
         label_id = '_'.join(row['id'].split('_')[:-2])
         label = self._get_label(label_id)
-
-        if (img.shape[0] == 8 and sensor != 'fmow_wv23') or (img.shape[0] == 4 and sensor != 'fmow_qbge'):
+     
+        if img.shape[0] != self.num_channels:
             self.problematic_ids.append(row['id'])
-            print(f"[{idx}] Mismatching channel size for {self.split} : {img.shape}, {sensor} | Ids : {len(self.problematic_ids)}")
-            
-    
+            logger.error(f"[{idx}] Mismatching channel size for {self.split} : {img.shape}, {sensor} | Ids : {len(self.problematic_ids)}")
+            return None, None
         if self.normalize:
             img = self.channelwise_transforms[sensor](img)
 
@@ -284,32 +311,40 @@ class ClsDataAugmentation(torch.nn.Module):
         return self.transform(x)
 
 
-class FmowDataset(BaseDataset):
-    def __init__(self, config):
+
+class _FmowDataset(BaseDataset):
+    def __init__(self, config, split):
         super().__init__(config)
         self.return_rgb = config.get('return_rgb', False)
         self.num_channels = config.get('num_channels', 4)
+        self.split = split
 
     
     def create_dataset(self):
-        train_transform = ClsDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
-        eval_transform = ClsDataAugmentation(split="test", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
-
-
+        transform = ClsDataAugmentation(split=self.split, size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
+        
         # Override the config with the transformed channel ids
-        output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
+        output_chn_ids = transform.get_chn_ids() #provides the updated channel ids after augmentation
         if output_chn_ids is not None:
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
             self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 
-        dataset_train = FmowBenchmarkDataset(
-            root=self.root_dir, split="train", transforms=train_transform, keep_sensors=self.keep_sensors, return_rgb=self.return_rgb, num_channels=self.num_channels, normalize=True
+        dataset = FmowBenchmarkDataset(
+            root=self.root_dir, split=self.split, transforms=transform, keep_sensors=self.keep_sensors, return_rgb=self.return_rgb, num_channels=self.num_channels, normalize=True
         )
-        dataset_val = FmowBenchmarkDataset(
-            root=self.root_dir, split="val", transforms=eval_transform, keep_sensors=self.keep_sensors, return_rgb=self.return_rgb, num_channels=self.num_channels, normalize=True
-        )
-        dataset_test = FmowBenchmarkDataset(
-            root=self.root_dir, split="test", transforms=eval_transform, keep_sensors=self.keep_sensors, return_rgb=self.return_rgb, num_channels=self.num_channels, normalize=True
-        )
+    
+        return dataset
+    
 
-        return dataset_train, dataset_val, dataset_test
+class FmowDataset():
+    def __init__(self, train_config, test_config=None):
+
+        self.train = _FmowDataset(train_config, split='train')
+        print(f'train_config: {train_config}')
+        print(f'test_config: {test_config}')
+        test_config = test_config if test_config is not None else train_config
+        self.val = _FmowDataset(test_config, split='val')
+        self.test = _FmowDataset(test_config, split='test')
+
+    def create_dataset(self):
+        return self.train.create_dataset(), self.val.create_dataset(), self.test.create_dataset()

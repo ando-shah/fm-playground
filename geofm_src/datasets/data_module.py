@@ -4,16 +4,20 @@ from geofm_src.factory import create_dataset
 from torch.utils.data import Subset
 
 class BenchmarkDataModule(LightningDataModule):
-    def __init__(self, dataset_config, batch_size, num_workers, pin_memory, seed=42):
+    def __init__(self, dataset_config, batch_size, num_workers, pin_memory, seed=42, dataset_test_config=None):
         super().__init__()
         self.dataset_config = dataset_config
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.seed = seed
+        self.dataset_test_config = dataset_test_config
 
     def setup(self, stage=None):
-        train, val, test = create_dataset(self.dataset_config)
+        if self.dataset_test_config is None:
+            train, val, test = create_dataset(self.dataset_config)
+        else:
+            train, val, test = create_dataset(self.dataset_config, self.dataset_test_config)
         print('subsetting train (if applicable)')
         self.dataset_train = make_subset(train, self.dataset_config.subset.train, seed=self.seed)
         print('subsetting val (if applicable)')

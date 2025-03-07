@@ -289,14 +289,15 @@ def eval_knn(
             }
             metrics = {**metrics, **{(n_per_class, t, k): metric_collection.clone() for k in knn_try.nb_knn}}
     model_with_knn = torch.nn.Sequential(model, knn_module_dict)
+    # logger.info(f"[kNN Eval] metrics with knn: {metrics}")
 
     # ============ evaluation ... ============
     if val_data_config is not None:
         if hasattr(model, 'encoder') and hasattr(model.encoder, 'update_data_config'):
-            logger.info("Updating model.encoder with validation data config for validation")
+            logger.info("[Update CFG] Updating model.encoder with validation data config for validation")
             model.encoder.update_data_config(val_data_config)
         else:
-            logger.warning("Model does not have update_data_config method, cannot update data config for KNN evaluation")
+            logger.warning("[Update CFG] Model does not have update_data_config method, cannot update data config for KNN evaluation")
 
 
     logger.info("Start the k-NN classification.")

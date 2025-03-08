@@ -14,4 +14,5 @@ multilabel: true
 target_dataset_name: dummy-superdove
 
 band_ids: [0, 1, 2, 3, 4, 5, 6, 7] # to subset the SD 8 bands
+band_gsds: [3, 3, 3, 3, 3, 3, 3, 3]
 senpamae_srf_name: rfs_superdove.npy

@@ -358,37 +358,45 @@ class ClsDataAugmentation(torch.nn.Module):
         return self.transform(x)
 
 
-class CorineDataset(BaseDataset):
-    def __init__(self, config):
+class _CorineDataset(BaseDataset):
+    def __init__(self, config, split):
         super().__init__(config)
+        self.split = split
         
-        # assert (self.band_ids is not None and self.target_ds_name is None) or (self.band_ids is None and self.target_ds_name is not None), "Both band_ids and target_ds_name cannot be provided"
-
     def create_dataset(self):
-        train_transform = ClsDataAugmentation(split="train", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
-        eval_transform = ClsDataAugmentation(split="test", size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
-
+        transform = ClsDataAugmentation(split=self.split, size=self.img_size, band_ids=self.band_ids, source_chn_ids=self.source_chn_ids, target_chn_ids=self.target_chn_ids)
+        
         if self.config.band_ids is not None: # so we dont have to type in the band ids manually
             self.config.senpamae_channels = self.config.band_ids
-            self.config.band_gsds = [30] * len(self.config.band_ids)
+            if self.config.band_gsds is None:
+                self.config.band_gsds = [30] * len(self.config.band_ids) #MODIS
         else: # using all bands
             self.config.senpamae_channels = list(range(0, self.config.num_channels))
-            self.config.band_gsds = [30] * self.config.num_channels
+            if self.config.band_gsds is None:
+                self.config.band_gsds = [30] * self.config.num_channels #MODIS
 
         # Override the config with the transformed channel ids
-        output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
+        output_chn_ids = transform.get_chn_ids() #provides the updated channel ids after augmentation
         if output_chn_ids is not None:
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
             self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 
-        dataset_train = SpectralEarthDataset(
-            root=self.root_dir, split="train", task_dir='corine', transforms=train_transform,
-        )
-        dataset_val = SpectralEarthDataset(
-            root=self.root_dir, split="val", task_dir='corine', transforms=eval_transform,
-        )
-        dataset_test = SpectralEarthDataset(
-            root=self.root_dir, split="test", task_dir='corine', transforms=eval_transform,
+        dataset = SpectralEarthDataset(
+            root=self.root_dir, split=self.split, task_dir='corine', transforms=transform,
         )
 
-        return dataset_train, dataset_val, dataset_test
+        return dataset
+    
+
+class CorineDataset():
+    def __init__(self, train_config, test_config=None):
+
+        self.train = _CorineDataset(train_config, split='train')
+        print(f'train_config: {train_config}')
+        print(f'test_config: {test_config}')
+        test_config = test_config if test_config is not None else train_config
+        self.val = _CorineDataset(test_config, split='val')
+        self.test = _CorineDataset(test_config, split='test')
+
+    def create_dataset(self):
+        return self.train.create_dataset(), self.val.create_dataset(), self.test.create_dataset()

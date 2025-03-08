@@ -17,3 +17,5 @@ sequence_length: null #for time series datasets: T goes into the C dimension
 band_gsds: null #for senpamae: list of GSDs for each band
 scale: 1.0 #for downscaling images
 normalize_target: true
+senpamae_channels: null #for senpamae: list of channels to use
+band_ids: null #for band ids to use

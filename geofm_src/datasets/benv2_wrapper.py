@@ -13,6 +13,8 @@ from torch.utils.data import random_split
 from torchgeo.datasets import BigEarthNet
 from .base_dataset import BaseDataset
 from .utils.utils import ChannelSampler 
+import logging
+logger = logging.getLogger(__name__)
 
 class BigEarthNetv2(BigEarthNet):
     """BigEarthNetv2 dataset.
@@ -464,8 +466,11 @@ class BenV2Dataset():
     def __init__(self, train_config, test_config=None):
 
         self.train = _BenV2Dataset(train_config, split='train')
-        print(f'train_config: {train_config}')
-        print(f'test_config: {test_config}')
+        logger.info(f'train_config: {train_config}\n')
+        if test_config is not None:
+            logger.info(f'test_config: {test_config}\n')
+        else:
+            logger.info(f'test_config: None\n')
         test_config = test_config if test_config is not None else train_config
         self.val = _BenV2Dataset(test_config, split='val')
         self.test = _BenV2Dataset(test_config, split='test')

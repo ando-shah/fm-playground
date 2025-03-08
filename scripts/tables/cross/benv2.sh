@@ -32,32 +32,31 @@ eurosat_train_percent=1.0
 accel_cls_blk_indices="[10,11]"
 last_n_blocks="[1]"
 
-bsz_softcon=2400
-bsz_croma=2200
-bsz_dofa=2200
-bsz_panopticon=250
+bsz_softcon=2000
+bsz_croma=2000
+bsz_dofa=2000
+bsz_panopticon=230
 bsz_galileo=650
 
 all_tasks=(
 
-    #A: 8b:4b
     # Baselines: s1 -> 0 to 4
     "base/panopticon_v3 null linear_probe benv2_s1 benv2_s1 $bsz_panopticon ${benv2_train_percent}"
     "base/dofa null linear_probe benv2_s1 benv2_s1 $bsz_dofa ${benv2_train_percent}"
     "base/croma_s1 null linear_probe benv2_s1 benv2_s1 $bsz_croma ${benv2_train_percent}"
     "base/galileo_s1_120 null linear_probe benv2_s1 benv2_s1 $bsz_galileo ${benv2_train_percent}"
-    "base/softcon_2b null linear_probe benv2_s1_scnorm benv2_s1_scnorm $bsz_softcon ${benv2_train_percent}"
+    "base/softcon_2b null linear_probe benv2_s1_scnorm benv2_s1_scnorm $bsz_softcon ${benv2_train_percent}" #REDO
 
 
     # Baselines: s2 -> 5 to 9
-    "base/panopticon_v3 linear_probe benv2_s2_12b benv2_s2_12b $bsz_panopticon ${benv2_train_percent}"
-    "base/dofa linear_probe benv2_s2_12b benv2_s2_12b $bsz_dofa ${benv2_train_percent}"
-    "base/croma_s2 linear_probe benv2_s2_12b benv2_s2_12b $bsz_croma ${benv2_train_percent}"
-    "base/galileo_s2_120 null linear_probe benv2_s2_10b benv2_s2_10b $bsz_galileo ${benv2_train_percent}"
-    "base/softcon_13b null linear_probe benv2_s2_13b_scnorm benv2_s2_13b_scnorm $bsz_softcon ${benv2_train_percent}"
+    "base/panopticon_v3 linear_probe benv2_s2_12b benv2_s2_12b $bsz_panopticon ${benv2_train_percent}" #REDO
+    "base/dofa linear_probe benv2_s2_12b benv2_s2_12b $bsz_dofa ${benv2_train_percent}" #REDO
+    "base/croma_s2 linear_probe benv2_s2_12b benv2_s2_12b $bsz_croma ${benv2_train_percent}" #REDO
+    "base/galileo_s2_120 null linear_probe benv2_s2_10b benv2_s2_10b $bsz_galileo ${benv2_train_percent}" #REDO
+    "base/softcon_13b null linear_probe benv2_s2_13b_scnorm benv2_s2_13b_scnorm $bsz_softcon ${benv2_train_percent}" #REDO
 
     # A: s1:s2 -> 10 to 14
-    "base/panopticon_v3 null linear_probe benv2_s1 benv2_s2_12b $bsz_panopticon ${benv2_train_percent}"
+    "base/panopticon_v3 null linear_probe benv2_s1 benv2_s2_12b $bsz_panopticon ${benv2_train_percent}" #REDO
     "base/dofa null linear_probe benv2_s1 benv2_s2_12b $bsz_dofa ${benv2_train_percent}"
     "base/croma_s1 base/croma_s2 linear_probe benv2_s1 benv2_s2_12b $bsz_croma ${benv2_train_percent}"
     "base/galileo_s1_120 base/galileo_s2_120 linear_probe benv2_s1 benv2_s2_10b $bsz_galileo ${benv2_train_percent}"
@@ -87,9 +86,9 @@ warmup_epochs=0
 
 ########## defaults both
 
-epochs=1
+epochs=50
 num_workers=3
-check_val_every_n_epoch=1
+check_val_every_n_epoch=10
 
 
 export CUDA_VISIBLE_DEVICES=$cuda_device

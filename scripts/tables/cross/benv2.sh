@@ -3,9 +3,9 @@ export $(cat /home/ando/fm-playground/.env)
 export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
-fastdevrun=no
-# exp_base_name=cross_sens_test
-exp_base_name=cross/fmow
+fastdevrun=fast
+exp_base_name=cross_sens_test2
+# exp_base_name=cross_sens/benv2
 overwrite=True
 
 
@@ -26,74 +26,39 @@ fi
 
 
 #train percent
-train_perc=0.1
+corine_train_percent=0.1
+benv2_train_percent=0.1 #same size as corine ~ 8000 samples
+eurosat_train_percent=1.0 
 
 all_tasks=(
 
     #A: 8b:4b
-    # Baselines: 8b -> 0 to 2
-    "base/panopticon_v3 knn fmow_8b fmow_8b 350 ${train_perc}"
-    "base/dofa knn fmow_8b fmow_8b 1000 ${train_perc}"
-    "base/senpamae knn fmow_8b fmow_8b 300 ${train_perc}"
+    # Baselines: s1 -> 0 to 3
+    "base/panopticon_v3 null linear_probe benv2_s1 benv2_s1 500 ${benv2_train_percent}"
+    "base/dofa null linear_probe benv2_s1 benv2_s1 1000 ${benv2_train_percent}"
+    "base/croma_s1 null linear_probe benv2_s1 benv2_s1 1000 ${benv2_train_percent}"
+    "base/galileo_s1 null linear_probe benv2_s1 benv2_s1 100 ${benv2_train_percent}"
 
-    # Baselines: 4b -> 3 to 5
-    "base/panopticon_v3 knn fmow_4b fmow_4b 350 ${train_perc}"
-    "base/dofa knn fmow_4b fmow_4b 1000 ${train_perc}"
-    "base/senpamae knn fmow_4b fmow_4b 300 ${train_perc}"
 
-    # Baselines: s2 -> 6 to 8
-    "base/panopticon_v3 knn fmow_s2 fmow_s2 350 ${train_perc}"
-    "base/dofa knn fmow_s2 fmow_s2 1000 ${train_perc}"
-    "base/senpamae knn fmow_s2 fmow_s2 300 ${train_perc}"
+    # Baselines: s2 -> 4 to 7
+    "base/panopticon_v3 linear_probe benv2_s2_12b benv2_s2_12b 150 ${benv2_train_percent}"
+    "base/dofa linear_probe benv2_s2_12b benv2_s2_12b 400 ${benv2_train_percent}"
+    "base/croma_s2 linear_probe benv2_s2_12b benv2_s2_12b 400 ${benv2_train_percent}"
+    "base/galileo_s2_120 null linear_probe benv2_s2_10b benv2_s2_10b 100 ${benv2_train_percent}"
 
-    #A: 8b:4b -> 9 to 11
-    "base/panopticon_v3 knn fmow_8b fmow_4b 400 ${train_perc}"
-    "base/dofa knn fmow_8b fmow_4b 1000 ${train_perc}"
-    "base/senpamae knn fmow_8b fmow_4b 400 ${train_perc}"
+    # Baselines: s1:s2 -> 8 to 11
+    "base/panopticon_v3 null linear_probe benv2_s1 benv2_s2_12b 150 ${benv2_train_percent}"
+    "base/dofa null linear_probe benv2_s1 benv2_s2_12b 400 ${benv2_train_percent}"
+    "base/croma_s1 base/croma_s2 linear_probe benv2_s1 benv2_s2_12b 400 ${benv2_train_percent}"
+    "base/galileo_s1 base/galileo_s2_120 linear_probe benv2_s1 benv2_s2_10b 100 ${benv2_train_percent}"
 
-    #B: 4b:8b -> 12 to 14
-    "base/panopticon_v3 knn fmow_4b fmow_8b 400 ${train_perc}"
-    "base/dofa knn fmow_4b fmow_8b 1000 ${train_perc}"
-    "base/senpamae knn fmow_4b fmow_8b 400 ${train_perc}"
+    #A: s2:s1 -> 12 to 15
+    "base/panopticon_v3 null linear_probe benv2_s2_10b benv2_s1 180 ${benv2_train_percent}"
+    "base/dofa null linear_probe benv2_s2_12b benv2_s1 400 ${benv2_train_percent}"
+    "base/croma_s2 base/croma_s1 linear_probe benv2_s2_12b benv2_s1 400 ${benv2_train_percent}"
+    "base/galileo_s2_120 base/galileo_s1 linear_probe benv2_s2_10b benv2_s1 100 ${benv2_train_percent}"
 
-    #C: 8b:s2 -> 15 to 17
-    "base/panopticon_v3 knn fmow_s2 fmow_8b 400 ${train_perc}"
-    "base/dofa knn fmow_s2 fmow_8b 1000 ${train_perc}"
-    "base/senpamae knn fmow_s2 fmow_8b 400 ${train_perc}"
 
-    #D: s2:8b -> 18 to 20
-    "base/panopticon_v3 knn fmow_8b fmow_s2 400 ${train_perc}"
-    "base/dofa knn fmow_8b fmow_s2 1000 ${train_perc}"
-    "base/senpamae knn fmow_8b fmow_s2 400 ${train_perc}"
-
-    #E: 4b:s2 -> 21 to 23
-    "base/panopticon_v3 knn fmow_4b fmow_s2 400 ${train_perc}"
-    "base/dofa knn fmow_4b fmow_s2 1000 ${train_perc}"
-    "base/senpamae knn fmow_4b fmow_s2 400 ${train_perc}"
-
-    #F: s2:4b -> 24 to 26   
-    "base/panopticon_v3 knn fmow_s2 fmow_4b 400 ${train_perc}"
-    "base/dofa knn fmow_s2 fmow_4b 1000 ${train_perc}"
-    "base/senpamae knn fmow_s2 fmow_4b 400 ${train_perc}"
-    
-
-    #BENv2: 10%
-
-    # "base/dofa linear_probe benv2_s2_1b 3000 ${benv2_train_percent}"
-    # "base/senpamae linear_probe benv2_s2_1b 3000 ${benv2_train_percent}"
-    # "base/panopticon linear_probe benv2_s2_1b 800 ${benv2_train_percent}"
-
-    # "base/dofa linear_probe benv2_s2_4b ${bsz_benv2} ${benv2_train_percent}" #died - run again
-    # "base/senpamae linear_probe benv2_s2_4b ${bsz_benv2} ${benv2_train_percent}"
-    # "base/panopticon linear_probe benv2_s2_4b ?? ${benv2_train_percent}"
-
-    # "base/dofa linear_probe benv2_s2_10b ${bsz_benv2} ${benv2_train_percent}"
-    # "base/senpamae linear_probe benv2_s2_10b ${bsz_benv2} ${benv2_train_percent}"
-    # "base/panopticon linear_probe benv2_s2_10b ?? ${benv2_train_percent}"
-
-    # "base/dofa linear_probe benv2_s2_12b ${bsz_benv2} ${benv2_train_percent}"
-    # "base/senpamae linear_probe benv2_s2_12b ${bsz_benv2} ${benv2_train_percent}"
-    # "base/panopticon linear_probe benv2_s2_12b ?? ${benv2_train_percent}"
     
 )
 
@@ -126,17 +91,27 @@ for task_id in "${task_ids[@]}"; do
 
     set -- $task
     model=$1
-    training_mode=$2
-    ds=$3
-    ds_test=$4
-    batch_size=$5
-    train_subset=$6
+    test_model=$2
+    training_mode=$3
+    ds=$4
+    ds_test=$5
+    batch_size=$6
+    train_subset=$7
+
+    # echo $model
+    # echo $test_model
+    # echo $training_mode
+    # echo $ds
+    # echo $ds_test
+    # echo $batch_size
+    # echo $train_subset
+    # exit 1
 
 
     cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py \
         model=$model \
         dataset=$ds \
-        output_dir=$ODIR/$exp_base_name/$ds/$model/$training_mode/${ds}_${ds_test} \
+        output_dir=$ODIR/$exp_base_name/${training_mode}/${model}_${test_model}/${ds}_${ds_test} \
         +model.training_mode=$training_mode \
         ++batch_size=$batch_size \
         num_workers=$num_workers \
@@ -144,6 +119,8 @@ for task_id in "${task_ids[@]}"; do
         seed=21 \
         overwrite=$overwrite \
         +dataset_test=$ds_test \
+        +model_test=$test_model \
+        +n_last_blocks_list=[4]
         "
 
     if [ $fastdevrun == 'no' ]; then
@@ -173,8 +150,10 @@ for task_id in "${task_ids[@]}"; do
     echo "Task ID: $task_id"
     echo "Task: $task"
     echo "Model: $model"
+    echo "Test Model: $test_model"
     echo "Training Mode: $training_mode"
     echo "Dataset: $ds"
+    echo "Dataset Test: $ds_test"
     echo "Batch Size: $batch_size"
     echo "Output Dir: $output_dir"
     echo "Check Val Every N Epoch: $check_val_every_n_epoch"
@@ -208,6 +187,7 @@ for task_id in "${task_ids[@]}"; do
         cmd="$cmd \
         +temperature=$temperature \
         +nb_knn=$nb_knn \
+        ++num_workers=16 \
         "
         echo $cmd
         $cmd
@@ -222,5 +202,5 @@ done
 #Run like this:
 # ./t2.sh 0 1 2  # Run tasks 0, 1, and 2
 # ./t2.sh {0..3}  # Run tasks 0 through 3
-#         ++num_workers=16 \
+
 

@@ -113,4 +113,5 @@ class EvalModelWrapper(nn.Module):
         """
         Updates the data config for the model.
         """
-        raise NotImplementedError()
+        # raise NotImplementedError()
+        pass

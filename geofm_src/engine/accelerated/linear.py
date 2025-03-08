@@ -235,8 +235,23 @@ def evaluate_linear_classifiers(
     return results_list, all_metrics_results_dict
 
 
+def update_model_data_config(feature_model, dataset_configs, split):
+    #update model configs before val
+    if dataset_configs is not None:
+        if dataset_configs[split] is not None:
+            # logger.info(feature_model.model)
+            if hasattr(feature_model.model, 'update_data_config'):
+                logger.info(f"[Update CFG:{split}] Updating model.model.encoder with {split} data config")
+                feature_model.model.update_data_config(dataset_configs[split])
+            else:
+                logger.warning(f"[Update CFG:{split}] Model does not have update_data_config method, cannot update data config for linear probe evaluation")
+    else:
+        logger.info(f"[Update CFG:{split}] No dataset configs provided for {split}, skipping update_data_config")
+
+
 def eval_linear(
     feature_model,
+    feature_model_test,
     linear_classifiers,
     train_data_loader,
     val_data_loader,
@@ -260,6 +275,7 @@ def eval_linear(
     classifier_fpath=None,
     val_class_mapping=None,
     criterion_cfg = {'id': 'CrossEntropyLoss'},
+    dataset_configs = None, #contains the any-sensor model configs for the test set
 ):
     checkpointer = Checkpointer(linear_classifiers, output_dir, optimizer=optimizer, scheduler=scheduler)
     checkpointer.logger = logger
@@ -311,9 +327,12 @@ def eval_linear(
             periodic_checkpointer.step(iteration)
             torch.cuda.synchronize()
 
+        feature_model_val = feature_model_test if feature_model_test is not None else feature_model
+        update_model_data_config(feature_model_val, dataset_configs, 'val')
+
         if (eval_period_iter > 0 and (iteration + 1) % int(eval_period_iter) == 0) or iteration == max_iter - 1:
             results_list, all_metrics_results_dict = evaluate_linear_classifiers(
-                feature_model=feature_model,
+                feature_model=feature_model_val,
                 linear_classifiers=remove_ddp_wrapper(linear_classifiers),
                 data_loader=val_data_loader,
                 metrics_file_path=metrics_file_path,
@@ -327,6 +346,9 @@ def eval_linear(
             best_val_checkpointer.update(results_list, iteration)
             
             torch.cuda.synchronize()
+            #reset model configs for train
+            update_model_data_config(feature_model, dataset_configs, 'train')
+
 
         iteration = iteration + 1
 
@@ -334,6 +356,7 @@ def eval_linear(
 
     if all_metrics_results_dict is not None: # eval might already be done
         update_linear_probe_metrics(output_dir, all_metrics_results_dict, prefix='val', iteration=iteration)
+
     
     return best_classifier_str, feature_model, linear_classifiers, iteration
 
@@ -386,6 +409,7 @@ def test_on_datasets(
 
 def run_eval_linear(
     model,
+    model_test_wrapper,
     output_dir,
     train_dataset,
     val_dataset,
@@ -413,7 +437,9 @@ def run_eval_linear(
     classifier_fpath=None,
     val_class_mapping_fpath=None,
     test_class_mapping_fpaths=[None],
-    seed = 21
+    seed = 21,
+    dataset_configs = None, #contains the any-sensor model configs for the test set
+                
 ):
 
     if test_metrics_list is None:
@@ -450,6 +476,10 @@ def run_eval_linear(
     x = x.unsqueeze(0).cuda()
     sample_output = feature_model(x)
 
+    #avoid using additional 1d batchnorm if using separate models for train and val/test because it causes mismatch feature mismatches for certain models
+    # use_additional_1dbatchnorm_list = heads_cfg.use_additional_1dbatchnorm_list if model_test_wrapper is None else [False]*len(heads_cfg.use_additional_1dbatchnorm_list)
+    # logger.info(f"[LINEAR] use_additional_1dbatchnorm_list: {use_additional_1dbatchnorm_list}")
+
     linear_classifiers, optim_param_groups = setup_linear_classifiers(
         sample_output,
         heads_cfg.pooling,
@@ -461,14 +491,21 @@ def run_eval_linear(
         default_blocks_to_featurevec = feature_model.default_blocks_to_featurevec,
         use_additional_1dbatchnorm_list = heads_cfg.use_additional_1dbatchnorm_list
     )
+
+    logger.info(f"[LINEAR] linear_classifiers: {linear_classifiers}")
     
     optimizer = build_optimizer(optim_param_groups, optim_cfg)
-
-
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, max_iter, eta_min=0)
     checkpointer = Checkpointer(linear_classifiers, output_dir, optimizer=optimizer, scheduler=scheduler)
     checkpointer.logger = logger
     start_iter = checkpointer.resume_or_load(classifier_fpath or "", resume=resume).get("iteration", -1) + 1
+
+    if model_test_wrapper is not None:
+        feature_model_test = FeatureModel(model_test_wrapper)
+        logger.info("Test model provided, will use test model for val/testing")
+    else:
+        feature_model_test = None
+        logger.info("No test model provided, will use train model for val/testing")
 
     train_data_loader = make_data_loader(
         dataset=train_dataset,
@@ -509,6 +546,7 @@ def run_eval_linear(
     metrics_file_path = os.path.join(output_dir, "results_eval_linear.json")
     best_classifier_str, feature_model, linear_classifiers, iteration = eval_linear(
         feature_model = feature_model,
+        feature_model_test = feature_model_test,
         linear_classifiers = linear_classifiers,
         train_data_loader = train_data_loader,
         val_data_loader = val_data_loader,
@@ -528,7 +566,16 @@ def run_eval_linear(
         criterion_cfg = criterion_cfg,
         val_monitor=val_monitor,
         val_monitor_higher_is_better=val_monitor_higher_is_better,
+        dataset_configs = dataset_configs,
     )
+
+    # train / val complete, for testing, use the test model if it exists
+    feature_model = feature_model_test if feature_model_test is not None else feature_model
+
+    #set model configs for test
+    update_model_data_config(feature_model, dataset_configs, 'test')
+
+    # test
     results_list = []
     if len(test_dataset_lists) > 0:
         results_list, test_all_metrics_out = test_on_datasets(

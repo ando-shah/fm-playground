@@ -315,8 +315,8 @@ class ClsDataAugmentation(torch.nn.Module):
                 chn_sample = ChannelSampler(band_ids)
                 if source_chn_ids is not None:
                     self.output_chn_ids = source_chn_ids[band_ids]
-                    self.mean = self.mean[band_ids]
-                    self.std = self.std[band_ids]
+                    # self.mean = self.mean[band_ids]
+                    # self.std = self.std[band_ids]
 
                     print(f'[ClsDataAugmentation] Sampling channels: {band_ids}')
                     self.transforms.append(chn_sample)
@@ -351,7 +351,7 @@ class ClsDataAugmentation(torch.nn.Module):
             # get in rgb order and then normalization can be applied
 
         # do normalization in a separate function
-        x_normed = self.normalize(sample["image"])
+        x_normed = self.normalize(sample["image"]).squeeze(0)
         x_out = self.transform(x_normed).squeeze(0)
 
         if self.bands == "s1":
@@ -420,13 +420,14 @@ class ClsDataAugmentation(torch.nn.Module):
         return sample_img
 
 
-class BenV2Dataset(BaseDataset):
-    def __init__(self, config):
+class _BenV2Dataset(BaseDataset):
+    def __init__(self, config, split):
         """Initialize the BigEarthNetv2 dataset."""
         super().__init__(config)
         self.bands = config.bands
         self.num_classes = config.num_classes
         self.num_channels = config.num_channels
+        self.split = split
 
         self.quantile_norm = config.get("quantile_norm", False)
         print('Using quantile norm: ', self.quantile_norm)
@@ -439,41 +440,36 @@ class BenV2Dataset(BaseDataset):
 
     def create_dataset(self):
         train_transform = ClsDataAugmentation(
-            split="train", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids, num_channels=self.num_channels, quantile_norm=self.quantile_norm
-        )
-        eval_transform = ClsDataAugmentation(
-            split="test", size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids, num_channels=self.num_channels, quantile_norm=self.quantile_norm
+            split=self.split, size=self.img_size, bands=self.bands, source_chn_ids=self.source_chn_ids, band_ids=self.band_ids, num_channels=self.num_channels, quantile_norm=self.quantile_norm
         )
 
         # Override the config with the transformed channel ids
         output_chn_ids = train_transform.get_chn_ids() #provides the updated channel ids after augmentation
         if output_chn_ids is not None:
             self.config['wavelengths_mean_nm'] = output_chn_ids[:,0].tolist()
-            self.config['wavelengths_mean_microns'] = [x/1e3 for x in self.config['wavelengths_mean_nm']]
             self.config['wavelengths_sigma_nm'] = output_chn_ids[:,1].tolist()
 
 
-        dataset_train = BigEarthNetv2(
+        dataset = BigEarthNetv2(
             root=self.root_dir,
             num_classes=self.num_classes,
-            split="train",
+            split=self.split,
             bands=self.input_bands,
             transforms=train_transform,
         )
 
-        dataset_val = BigEarthNetv2(
-            root=self.root_dir,
-            num_classes=self.num_classes,
-            split="val",
-            bands=self.input_bands,
-            transforms=eval_transform,
-        )
-        dataset_test = BigEarthNetv2(
-            root=self.root_dir,
-            num_classes=self.num_classes,
-            split="test",
-            bands=self.input_bands,
-            transforms=eval_transform,
-        )
+        return dataset
+    
+class BenV2Dataset():
+    def __init__(self, train_config, test_config=None):
 
-        return dataset_train, dataset_val, dataset_test
+        self.train = _BenV2Dataset(train_config, split='train')
+        print(f'train_config: {train_config}')
+        print(f'test_config: {test_config}')
+        test_config = test_config if test_config is not None else train_config
+        self.val = _BenV2Dataset(test_config, split='val')
+        self.test = _BenV2Dataset(test_config, split='test')
+
+    def create_dataset(self):
+        return self.train.create_dataset(), self.val.create_dataset(), self.test.create_dataset()
+        

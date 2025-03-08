@@ -140,22 +140,44 @@ def main(cfg: DictConfig):
     # create model
     model_wrapper = create_model(cfg.model, cfg.dataset)
 
+    #-------------------------------- Check for val/test specific configs --------------------------------
+    model_test_wrapper = None
+    
     # If dataset_test is specified, load its config for testing
     if hasattr(cfg, 'dataset_test') and cfg.dataset_test:
         # Use hydra.compose with an explicit override to get the test dataset config
         overrides = [f"dataset={cfg.dataset_test}"]
         test_config = hydra.compose(config_name="config", overrides=overrides)
+        print(f"[Test config]: {test_config}")
         
-        if test_config and hasattr(test_config, 'dataset'):
-            print(f"Loaded test data config for dataset: {cfg.dataset_test}")
-            
+        if test_config and hasattr(test_config, 'dataset'):            
             # Extract the dataset part of the config
             cfg.dataset_test = test_config.dataset
             cfg.dataset_test.image_resolution = cfg.model.image_resolution
+            print(f"Loaded test data config for dataset: {cfg.dataset_test}")
+
+            # If model_test is specified, load its config for testing
+            if hasattr(cfg, 'model_test') and cfg.model_test:
+                #use hydra.compose to load the model_test config
+                overrides = [f"model={cfg.model_test}"]
+                model_test_config = hydra.compose(config_name="config", overrides=overrides)
+                cfg.model_test = model_test_config.model
+                print(f"[Test model] config for model: {cfg.model_test}")
+                model_test_wrapper = create_model(cfg.model_test, cfg.dataset_test)
+                # print(f"[Test model] config for model: {cfg.model_test}")
+            else:
+                print(f"[Test model] no model_test config provided, using train model for testing")
 
         else:
             print(f"Warning: Failed to load test config for {cfg.dataset_test}")
+    else:
+        cfg.dataset_test = None
+        print(f"Warning: No dataset_test config provided, using single dataset for training and testing")
 
+    #-------------------------------- Done checking for val/test specific configs --------------------------------
+    
+        
+        
 
     # create datamodule
     cfg.dataset.image_resolution = cfg.model.image_resolution
@@ -273,15 +295,21 @@ def main(cfg: DictConfig):
         if training_mode == 'linear_probe':
             model_wrapper.load_encoder(cfg.model.accel_cls_blk_indices)
 
+            if model_test_wrapper is not None:
+                model_test_wrapper.load_encoder(cfg.model.accel_cls_blk_indices)
+
             heads_cfg = OmegaConf.create(dict(
                 n_last_blocks_list = cfg.n_last_blocks_list,
                 pooling = cfg.pooling,
                 learning_rates = cfg.lr,
                 use_additional_1dbatchnorm_list = cfg.use_additional_1dbatchnorm_list,
             ))
+            #create a combined dataset config for train/val/test
+            cfg_datasets = {'train': cfg.dataset, 'val': cfg.dataset_test, 'test': cfg.dataset_test}
 
             results_list = run_eval_linear(
                 model_wrapper,
+                model_test_wrapper,
                 cfg.output_dir,
                 data_module.dataset_train,
                 data_module.dataset_val,
@@ -296,6 +324,8 @@ def main(cfg: DictConfig):
                 optim_cfg=cfg.optim,
                 val_monitor = cfg.task_kwargs.ckpt_monitor,
                 val_monitor_higher_is_better = cfg.task_kwargs.ckpt_monitor_higher_is_better,
+                dataset_configs = cfg_datasets, #contains the any-sensor model configs for the train/test set
+                
             )
 
             # process loss file

@@ -5,7 +5,7 @@ cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
 fastdevrun=no
 # exp_base_name=cross_sens_test
-exp_base_name=cross/fmow
+exp_base_name=cross_sens/fmow
 overwrite=True
 
 
@@ -112,7 +112,7 @@ warmup_epochs=0
 ########## defaults both
 
 epochs=50
-num_workers=4
+num_workers=3
 check_val_every_n_epoch=5
 
 
@@ -132,11 +132,12 @@ for task_id in "${task_ids[@]}"; do
     batch_size=$5
     train_subset=$6
 
+    train_model_name=${model#base/}
 
     cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py \
         model=$model \
         dataset=$ds \
-        output_dir=$ODIR/$exp_base_name/$ds/$model/$training_mode/${ds}_${ds_test} \
+        output_dir=$ODIR/$exp_base_name/${training_mode}/${train_model_name}-null/${ds}-${ds_test} \
         +model.training_mode=$training_mode \
         ++batch_size=$batch_size \
         num_workers=$num_workers \

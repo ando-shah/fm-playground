@@ -241,7 +241,7 @@ def update_model_data_config(feature_model, dataset_configs, split):
         if dataset_configs[split] is not None:
             # logger.info(feature_model.model)
             if hasattr(feature_model.model, 'update_data_config'):
-                logger.info(f"[Update CFG:{split}] Updating model.model.encoder with {split} data config")
+                logger.info(f"[Update CFG:{split}] Updating model.model.encoder with: {dataset_configs[split]}")
                 feature_model.model.update_data_config(dataset_configs[split])
             else:
                 logger.warning(f"[Update CFG:{split}] Model does not have update_data_config method, cannot update data config for linear probe evaluation")
@@ -327,10 +327,13 @@ def eval_linear(
             periodic_checkpointer.step(iteration)
             torch.cuda.synchronize()
 
-        feature_model_val = feature_model_test if feature_model_test is not None else feature_model
-        update_model_data_config(feature_model_val, dataset_configs, 'val')
+        
 
         if (eval_period_iter > 0 and (iteration + 1) % int(eval_period_iter) == 0) or iteration == max_iter - 1:
+            logger.info(f"Evaluating at iteration {iteration} with val model: {feature_model_test is not None}")
+            feature_model_val = feature_model_test if feature_model_test is not None else feature_model
+            update_model_data_config(feature_model_val, dataset_configs, 'val')
+
             results_list, all_metrics_results_dict = evaluate_linear_classifiers(
                 feature_model=feature_model_val,
                 linear_classifiers=remove_ddp_wrapper(linear_classifiers),
@@ -492,7 +495,7 @@ def run_eval_linear(
         use_additional_1dbatchnorm_list = heads_cfg.use_additional_1dbatchnorm_list
     )
 
-    logger.info(f"[LINEAR] linear_classifiers: {linear_classifiers}")
+    # logger.info(f"[LINEAR] linear_classifiers: {linear_classifiers}")
     
     optimizer = build_optimizer(optim_param_groups, optim_cfg)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, max_iter, eta_min=0)

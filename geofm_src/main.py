@@ -296,7 +296,7 @@ def main(cfg: DictConfig):
             model_wrapper.load_encoder(cfg.model.accel_cls_blk_indices)
 
             if model_test_wrapper is not None:
-                model_test_wrapper.load_encoder(cfg.model.accel_cls_blk_indices)
+                model_test_wrapper.load_encoder(cfg.model_test.accel_cls_blk_indices) #make sure to load the correct block indices for the test model
 
             heads_cfg = OmegaConf.create(dict(
                 n_last_blocks_list = cfg.n_last_blocks_list,
@@ -306,6 +306,9 @@ def main(cfg: DictConfig):
             ))
             #create a combined dataset config for train/val/test
             cfg_datasets = {'train': cfg.dataset, 'val': cfg.dataset_test, 'test': cfg.dataset_test}
+
+            logger.info(f"Train Model: {model_wrapper}")
+            logger.info(f"Test Model: {model_test_wrapper}")
 
             results_list = run_eval_linear(
                 model_wrapper,

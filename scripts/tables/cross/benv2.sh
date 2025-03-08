@@ -3,9 +3,9 @@ export $(cat /home/ando/fm-playground/.env)
 export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
-fastdevrun=fast
-exp_base_name=cross_sens_test2
-# exp_base_name=cross_sens/benv2
+fastdevrun=no
+exp_base_name=cross_sens/benv2
+# exp_base_name=cross_sens/benv2 
 overwrite=True
 
 
@@ -28,36 +28,47 @@ fi
 #train percent
 corine_train_percent=0.1
 benv2_train_percent=0.1 #same size as corine ~ 8000 samples
-eurosat_train_percent=1.0 
+eurosat_train_percent=1.0
+accel_cls_blk_indices="[10,11]"
+last_n_blocks="[1]"
+
+bsz_softcon=2400
+bsz_croma=2200
+bsz_dofa=2200
+bsz_panopticon=250
+bsz_galileo=650
 
 all_tasks=(
 
     #A: 8b:4b
-    # Baselines: s1 -> 0 to 3
-    "base/panopticon_v3 null linear_probe benv2_s1 benv2_s1 500 ${benv2_train_percent}"
-    "base/dofa null linear_probe benv2_s1 benv2_s1 1000 ${benv2_train_percent}"
-    "base/croma_s1 null linear_probe benv2_s1 benv2_s1 1000 ${benv2_train_percent}"
-    "base/galileo_s1 null linear_probe benv2_s1 benv2_s1 100 ${benv2_train_percent}"
+    # Baselines: s1 -> 0 to 4
+    "base/panopticon_v3 null linear_probe benv2_s1 benv2_s1 $bsz_panopticon ${benv2_train_percent}"
+    "base/dofa null linear_probe benv2_s1 benv2_s1 $bsz_dofa ${benv2_train_percent}"
+    "base/croma_s1 null linear_probe benv2_s1 benv2_s1 $bsz_croma ${benv2_train_percent}"
+    "base/galileo_s1_120 null linear_probe benv2_s1 benv2_s1 $bsz_galileo ${benv2_train_percent}"
+    "base/softcon_2b null linear_probe benv2_s1_scnorm benv2_s1_scnorm $bsz_softcon ${benv2_train_percent}"
 
 
-    # Baselines: s2 -> 4 to 7
-    "base/panopticon_v3 linear_probe benv2_s2_12b benv2_s2_12b 150 ${benv2_train_percent}"
-    "base/dofa linear_probe benv2_s2_12b benv2_s2_12b 400 ${benv2_train_percent}"
-    "base/croma_s2 linear_probe benv2_s2_12b benv2_s2_12b 400 ${benv2_train_percent}"
-    "base/galileo_s2_120 null linear_probe benv2_s2_10b benv2_s2_10b 100 ${benv2_train_percent}"
+    # Baselines: s2 -> 5 to 9
+    "base/panopticon_v3 linear_probe benv2_s2_12b benv2_s2_12b $bsz_panopticon ${benv2_train_percent}"
+    "base/dofa linear_probe benv2_s2_12b benv2_s2_12b $bsz_dofa ${benv2_train_percent}"
+    "base/croma_s2 linear_probe benv2_s2_12b benv2_s2_12b $bsz_croma ${benv2_train_percent}"
+    "base/galileo_s2_120 null linear_probe benv2_s2_10b benv2_s2_10b $bsz_galileo ${benv2_train_percent}"
+    "base/softcon_13b null linear_probe benv2_s2_13b_scnorm benv2_s2_13b_scnorm $bsz_softcon ${benv2_train_percent}"
 
-    # Baselines: s1:s2 -> 8 to 11
-    "base/panopticon_v3 null linear_probe benv2_s1 benv2_s2_12b 150 ${benv2_train_percent}"
-    "base/dofa null linear_probe benv2_s1 benv2_s2_12b 400 ${benv2_train_percent}"
-    "base/croma_s1 base/croma_s2 linear_probe benv2_s1 benv2_s2_12b 400 ${benv2_train_percent}"
-    "base/galileo_s1 base/galileo_s2_120 linear_probe benv2_s1 benv2_s2_10b 100 ${benv2_train_percent}"
-
-    #A: s2:s1 -> 12 to 15
-    "base/panopticon_v3 null linear_probe benv2_s2_10b benv2_s1 180 ${benv2_train_percent}"
-    "base/dofa null linear_probe benv2_s2_12b benv2_s1 400 ${benv2_train_percent}"
-    "base/croma_s2 base/croma_s1 linear_probe benv2_s2_12b benv2_s1 400 ${benv2_train_percent}"
-    "base/galileo_s2_120 base/galileo_s1 linear_probe benv2_s2_10b benv2_s1 100 ${benv2_train_percent}"
-
+    # A: s1:s2 -> 10 to 14
+    "base/panopticon_v3 null linear_probe benv2_s1 benv2_s2_12b $bsz_panopticon ${benv2_train_percent}"
+    "base/dofa null linear_probe benv2_s1 benv2_s2_12b $bsz_dofa ${benv2_train_percent}"
+    "base/croma_s1 base/croma_s2 linear_probe benv2_s1 benv2_s2_12b $bsz_croma ${benv2_train_percent}"
+    "base/galileo_s1_120 base/galileo_s2_120 linear_probe benv2_s1 benv2_s2_10b $bsz_galileo ${benv2_train_percent}"
+    "base/softcon_2b base/softcon_13b linear_probe benv2_s1_scnorm benv2_s2_13b_scnorm $bsz_softcon ${benv2_train_percent}"
+    
+    #B: s2:s1 -> 15 to 19
+    "base/panopticon_v3 null linear_probe benv2_s2_10b benv2_s1 $bsz_panopticon ${benv2_train_percent}"
+    "base/dofa null linear_probe benv2_s2_12b benv2_s1 $bsz_dofa ${benv2_train_percent}"
+    "base/croma_s2 base/croma_s1 linear_probe benv2_s2_12b benv2_s1 $bsz_croma ${benv2_train_percent}"
+    "base/galileo_s2_120 base/galileo_s1_120 linear_probe benv2_s2_10b benv2_s1 $bsz_galileo ${benv2_train_percent}"
+    "base/softcon_13b base/softcon_2b linear_probe benv2_s2_13b_scnorm benv2_s1_scnorm $bsz_softcon ${benv2_train_percent}"
 
     
 )
@@ -76,9 +87,9 @@ warmup_epochs=0
 
 ########## defaults both
 
-epochs=50
-num_workers=4
-check_val_every_n_epoch=5
+epochs=1
+num_workers=3
+check_val_every_n_epoch=1
 
 
 export CUDA_VISIBLE_DEVICES=$cuda_device
@@ -98,6 +109,11 @@ for task_id in "${task_ids[@]}"; do
     batch_size=$6
     train_subset=$7
 
+    #stip base/ from model
+    train_model_name=${model#base/}
+    test_model_name=${test_model#base/}
+
+
     # echo $model
     # echo $test_model
     # echo $training_mode
@@ -106,12 +122,13 @@ for task_id in "${task_ids[@]}"; do
     # echo $batch_size
     # echo $train_subset
     # exit 1
-
+    #        +n_last_blocks_list=[4] \
+    #++model.accel_cls_blk_indices=$accel_cls_blk_indices \
 
     cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py \
         model=$model \
         dataset=$ds \
-        output_dir=$ODIR/$exp_base_name/${training_mode}/${model}_${test_model}/${ds}_${ds_test} \
+        output_dir=$ODIR/$exp_base_name/${training_mode}/${train_model_name}-${test_model_name}/${ds}-${ds_test} \
         +model.training_mode=$training_mode \
         ++batch_size=$batch_size \
         num_workers=$num_workers \
@@ -120,7 +137,7 @@ for task_id in "${task_ids[@]}"; do
         overwrite=$overwrite \
         +dataset_test=$ds_test \
         +model_test=$test_model \
-        +n_last_blocks_list=[4]
+        +n_last_blocks_list=$last_n_blocks \
         "
 
     if [ $fastdevrun == 'no' ]; then

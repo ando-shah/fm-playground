@@ -7,8 +7,7 @@ class PanopticonWrapper(EvalModelWrapper):
     def _load_encoder(self, blk_indices):
         self.encoder = torch.hub.load(
             '/home/hk-project-pai00028/tum_mhj8661/code/PanOpticOn',
-            'panopticon_from_eval_config',
-            self.model_config,
+            'panopticon_vitb14',
             source='local')
         self.norm = self.encoder.norm
         self.blk_indices = blk_indices

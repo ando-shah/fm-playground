@@ -1,12 +1,12 @@
 # Evaluation of Foundation Models for Earth Observation
 
 This repository contains the evaluation code of the Panopticon paper.
-The code developed from the `geofm` branch in the [DOFA-pytorch](https://github.com/xiong-zhitong/DOFA-pytorch) repository.
+The code developed from the `geofm` branch in the [DOFA-pytorch](https://github.com/xiong-zhitong/DOFA-pytorch) repository. The code in `geofm/engine/accelerated` is from [DINOv2](https://github.com/facebookresearch/dinov2) with minor adjustments.
 
 
 ## Setup
 
-Navigate into the root directory of this repository and do:
+Navigate into the root directory of this repository and do
 ```
 conda create -n dofa-pytorch python=3.10 --yes
 conda activate dofa-pytorch
@@ -16,10 +16,7 @@ mim install mmcv==2.1.0 mmsegmentation==1.2.2
 pip install -e .
 ```
 
-
-### Set Up Your Environment Variables
-
-You can set this environment variable in a .env in the root directory:
+Define the following environment variables in an .env file in the root directory of this repository:
 ```shell
 MODEL_WEIGHTS_DIR=<path/to/your/where/you/want/to/store/weights>
 TORCH_HOME=<path/to/your/where/you/want/to/store/torch/hub/weights>
@@ -64,25 +61,24 @@ for example have a single place where all weights across the models are stored, 
 
 ## Running Experiments
 
-To run evaluation on any of the models, you can use the following example:
-
+To run, e.g., linear probing on a model, execute
 
 ```bash
 export $(cat .env)
-echo "Output Directory": $ODIR
-echo "Model Size": $MODEL_SIZE
 
-python src/main.py \
-output_dir=${ODIR}/exps/dinov2_cls_linear_probe_benv2_rgb \
-model=dinov2_cls_linear_probe \
-dataset=benv2_rgb \
-lr=0.002 \
-task=classification \
-num_gpus=0 \
-num_workers=8 \
-epochs=30 \
-warmup_epochs=5 \
-seed=13 \
+python geofm_src/main.py \
+   model=base/panopticon \
+   dataset=geobench_eurosat_13b \
+   output_dir="${ODIR}/sanity_check/" \
+   +model.training_mode=linear_probe \
+   ++batch_size=200 \
+   num_gpus=1 \
+   num_workers=8 \
+   epochs=2 \
+   warmup_epochs=0 \
+   trainer.check_val_every_n_epoch=1 \
+   +optim=sgd \
+   seed=21 \
 ```
 
 

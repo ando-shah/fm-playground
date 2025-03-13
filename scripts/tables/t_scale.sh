@@ -184,6 +184,30 @@ all_tasks=(
     "base/senpamae knn geobench_pv4ger_cls 800 1.0 1.0"
     "base/panopticon_v2 knn geobench_pv4ger_cls 700 1.0 1.0" 
     "base/panopticon_v3 knn geobench_pv4ger_cls 700 1.0 1.0"
+
+
+    # Brick Kiln kNN 34-37
+    "base/dofa knn geobench_brick_kiln_1b 30000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_brick_kiln_1b 30000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_brick_kiln_1b 20000 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_brick_kiln_1b 20000 ${eurosat_train_percent}"
+
+    # Brick Kiln kNN 38-41  
+    "base/dofa knn geobench_brick_kiln_4b 20000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_brick_kiln_4b 20000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_brick_kiln_4b 1000 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_brick_kiln_4b 1000 ${eurosat_train_percent}"
+
+    # Brick Kiln kNN 42-45
+    "base/dofa knn geobench_brick_kiln_10b 15000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_brick_kiln_10b 1000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_brick_kiln_10b 400 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_brick_kiln_10b 400 ${eurosat_train_percent}"
+    # Brick Kiln kNN 46-49
+    "base/dofa knn geobench_brick_kiln_12b 15000 ${eurosat_train_percent}"
+    "base/senpamae knn geobench_brick_kiln_12b 1000 ${eurosat_train_percent}"
+    "base/panopticon knn geobench_brick_kiln_12b 300 ${eurosat_train_percent}"
+    "base/panopticon_v3 knn geobench_brick_kiln_12b 300 ${eurosat_train_percent}"
     
     
 )

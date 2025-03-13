@@ -3,7 +3,7 @@ export $(cat /home/ando/fm-playground/.env)
 export PYTHONPATH='.'
 cmd="$PY_EXECUTABLE $REPO_PATH/geofm_src/main.py"
 
-fastdevrun=bsz
+fastdevrun=no
 exp_base_name=t3.0
 overwrite=True
 
@@ -24,31 +24,33 @@ else
 fi
 
 
-bsz_benv2=512
-
 #train percent
 corine_train_percent=0.1
 benv2_train_percent=0.05 #same size as corine ~ 8000 samples
-eurosat_train_percent=1.0
+eurosat_train_percent=1.0 
 
 all_tasks=(
 
-    #Corine-Modis
-    "base/croma_pe partial_finetune corine_modis 500 ${corine_train_percent}"
-    "base/softcon_pe partial_finetune corine_modis 500 ${corine_train_percent}"
+    #Corine-Modis 0-7
+    "base/dinov2_pe partial_finetune corine_modis 300 ${corine_train_percent}"
+    "base/croma_s2_pe partial_finetune corine_modis 1000 ${corine_train_percent}"
+    "base/softcon_13b_pe partial_finetune corine_modis 500 ${corine_train_percent}"
     "base/anysat_naip_pe partial_finetune corine_modis 100 ${corine_train_percent}"
     # "base/galileo_pe partial_finetune corine_modis 100 ${corine_train_percent}" TBD
     "base/dofa linear_probe corine_modis 500 ${corine_train_percent}"
     "base/senpamae linear_probe corine_modis 200 ${corine_train_percent}"
     "base/panopticon linear_probe corine_modis 180 ${corine_train_percent}"
+    "base/panopticon_v3 linear_probe corine_modis 180 ${corine_train_percent}"
 
-    #Corine-SD
-    "base/croma_pe partial_finetune corine_modis 500 ${corine_train_percent}"
-    "base/softcon_pe partial_finetune corine_sd 500 ${corine_train_percent}"
+    #Corine-SD 8-15
+    "base/dinov2_pe partial_finetune corine_sd 300 ${corine_train_percent}"
+    "base/croma_s2_pe partial_finetune corine_sd 500 ${corine_train_percent}"
+    "base/softcon_13b_pe partial_finetune corine_sd 500 ${corine_train_percent}"
     "base/anysat_naip_pe partial_finetune corine_sd 100 ${corine_train_percent}"
     "base/dofa linear_probe corine_sd 1000 ${corine_train_percent}"
     "base/senpamae linear_probe corine_sd 700 ${corine_train_percent}"
     "base/panopticon linear_probe corine_sd 500 ${corine_train_percent}"
+    "base/panopticon_v3 linear_probe corine_sd 500 ${corine_train_percent}"
 
     
 
@@ -74,16 +76,13 @@ all_tasks=(
 
 ########## linear probe defaults
 
-n_last_blocks_list='[1,4]'
-pooling='[avgpool,cls,default]'
-lrs_linear_probe='[1e-5,5e-5,1e-4,5e-4,1e-3,5e-3,1e-2,5e-2,0.1,0.5,1,3,5,10,20]'
-optim=adamw
+optim=sgd
 nb_knn="[1,3,5,10,15,20,25,30]"
 temperature=0.07
 
 ########## pe linear probe (=partial finetune) defaults
 
-lrs_partial_ft="10 0.1 0.01 0.001"
+lrs_partial_ft="0.1 0.01 0.001 0.0005"
 warmup_epochs=0
 
 ########## defaults both
@@ -160,9 +159,6 @@ for task_id in "${task_ids[@]}"; do
     if [ $training_mode == 'linear_probe' ]; then
         
         cmd="$cmd \
-            +n_last_blocks_list=$n_last_blocks_list \
-            +pooling=$pooling \
-            +lr=$lrs_linear_probe
             +optim=\${_optims.$optim} \
             "
         echo $cmd
@@ -173,7 +169,7 @@ for task_id in "${task_ids[@]}"; do
         for lr in $lrs_partial_ft; do
             echo "partial finetune with lr=$lr"
             lr_cmd="$cmd \
-                +lr=$lr \
+                ++lr=$lr \
                 +model.params_to_train=[] \
                 warmup_epochs=$warmup_epochs \
                 "

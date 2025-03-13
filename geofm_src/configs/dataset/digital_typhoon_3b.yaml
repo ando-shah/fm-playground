@@ -12,3 +12,8 @@ multilabel: false
 sequence_length: 3 # number of timesteps in the sequence
 wavelengths_mean_nm: [10400, 10400, 10400]
 wavelengths_sigma_nm: [250, 250, 250]
+
+subset:
+  train: 0.1
+  val: 0.2
+  test: -1

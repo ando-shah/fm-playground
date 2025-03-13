@@ -18,3 +18,7 @@ senpamae_channels: #senpamae SRF has only 10 channels (listed above), so indexes
   - 2
   - 1
 senpamae_srf_name: rfs_sentinel2_a.npy
+subset:
+  train: 0.1
+  val: 0.1
+  test: -1

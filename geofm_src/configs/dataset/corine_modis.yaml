@@ -18,3 +18,8 @@ band_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 senpamae_channels: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 band_gsds: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
 senpamae_srf_name: rfs_modis_terra.npy
+
+subset:
+ train: 0.1
+ val: -1
+ test: -1

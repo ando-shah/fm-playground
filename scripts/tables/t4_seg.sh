@@ -1,61 +1,85 @@
 #!/bin/bash
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=leonard.waldmann@tum.de
-##SBATCH --output=/home/hk-project-pai00028/tum_mhj8661/code/slurm-%A_%a.out
+#SBATCH --output=/home/hk-project-pai00028/tum_mhj8661/code/slurm-%A_%a-%x.out
 
-#SBATCH --job-name=t1
+#SBATCH --job-name=t4_seg
 #SBATCH --partition=accelerated
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=20        # default: 38
-#SBATCH --time=2:00:00
-#SBATCH --array=20,18
-##SBATCH --array=12,13,16,17,18-20,24-25
+#SBATCH --time=3:00:00
+#SBATCH --array=12
 
 ##### export env variables
 export $(cat /home/hk-project-pai00028/tum_mhj8661/code/fm-playground/.env) # horeka
 #####
 
 
-fastdevrun=fast
-exp_base_name=debug11
+fastdevrun=no
+exp_base_name=t4
 
 all_tasks=(
 
-    # m-pv4seg (rgb)
+    # m-pv4seg (rgb) 0-4
     'base/dinov2 frozen_backbone geobench_pv4ger_seg 100'
+    'base/anysat_spot frozen_backbone geobench_pv4ger_seg 100'
+    'base/senpamae frozen_backbone geobench_pv4ger_seg 100' # TODO
     'base/dofa frozen_backbone geobench_pv4ger_seg 100'
-    'base/panopticon_v2 frozen_backbone geobench_pv4ger_seg 100'
+    'base/panopticon_v4 frozen_backbone geobench_pv4ger_seg 100'
 
-    # m-nzcattle (rgb)
+    # m-cashew (s2) 5-12 (<2h)
+    'base/dinov2 frozen_backbone geobench_cashew_rgb 100'
+    'base/croma_s2 frozen_backbone geobench_cashew_12b 100'
+    'base/softcon_13b frozen_backbone geobench_cashew_13b 100'
+    'base/anysat_s2 frozen_backbone geobench_cashew_10b 100' 
+    'base/galileo_s2 frozen_backbone geobench_cashew_10b 100' # TODO
+    'base/senpamae frozen_backbone geobench_cashew_12b 100' # TODO
+    'base/dofa frozen_backbone geobench_cashew_12b 100' 
+    'base/panopticon_v4 frozen_backbone geobench_cashew_12b 100'
 
-    # neontree 
+    # chesapeak (rgb / naip) 13-17
+    'base/dinov2 frozen_backbone geobench_chesapeake_rgb 100'
+    'base/anysat_naip frozen_backbone geobench_chesapeake_4b 100'
+    'base/senpamae frozen_backbone geobench_chesapeake_rgb 100' #TODO
+    'base/dofa frozen_backbone geobench_chesapeake_4b 100'
+    'base/panopticon_v4 frozen_backbone geobench_chesapeake_4b 100'
 
-    # m-cashew
-    # 'base/croma_s2 frozen_backbone geobench_cashew_12b 100'
-    # 'base/softcon_13b frozen_backbone geobench_cashew_13b 100'
-    # 'base/dinov2 frozen_backbone geobench_cashew_rgb 100'
-    # 'base/panopticon_v2 frozen_backbone geobench_cashew_12b 100'
-    # 'base/dofa frozen_backbone geobench_cashew_12b 100'
-    # 'base/anysat_s2 frozen_backbone geobench_cashew_10b 100'
-    # 'base/galileo_s2 frozen_backbone geobench_cashew_12b 100'
+    # m-nzcattle (rgb) 18-22
+    'base/dinov2 frozen_backbone geobench_nzcattle 100'
+    'base/anysat_spot frozen_backbone geobench_nzcattle 100'
+    'base/senpamae frozen_backbone geobench_nzcattle 100'
+    'base/dofa frozen_backbone geobench_nzcattle 100'
+    'base/panopticon_v4 frozen_backbone geobench_nzcattle 100'
 
-    # sa crop
+    # neontree (only rgb) 23-27
+    'base/dinov2 frozen_backbone geobench_neontree 100'
+    'base/anysat_spot frozen_backbone geobench_neontree 100'
+    'base/senpamae frozen_backbone geobench_neontree 100'
+    'base/dofa frozen_backbone geobench_neontree 100'
+    'base/panopticon_v4 frozen_backbone geobench_neontree 100'
 
-    # chesapeak
+    # sa crop (s2) 28-35
+    'base/croma_s2 frozen_backbone geobench_sacrop_12b 100'
+    'base/softcon_13b frozen_backbone geobench_sacrop_13b 100'
+    'base/dinov2 frozen_backbone geobench_sacrop_rgb 100'
+    'base/anysat_s2 frozen_backbone geobench_sacrop_10b 100'
+    'base/galileo_s2 frozen_backbone geobench_sacrop_10b 100'
+    'base/senpamae frozen_backbone geobench_sacrop_12b 100'
+    'base/dofa frozen_backbone geobench_sacrop_12b 100'
+    'base/panopticon_v4 frozen_backbone geobench_sacrop_12b 100'
 )
-
 
 
 
 ########## defaults 
 
 epochs=50
-num_workers=12
+num_workers=10
 check_val_every_n_epoch=1
 val_subset=-1
-lrs='0.1 0.01 0.001 0.0001 0.00001'
+lrs='0.1 0.01 0.001 0.0001 0.00001 0.000001'
 warmup_epochs=0
 
 ########## get tasks
@@ -121,7 +145,7 @@ for task_id in "${task_ids[@]}"; do
     for lr in $lrs; do
         echo "subtask with lr=$lr"
         lr_cmd="$cmd \
-            lr=$lr \
+            +lr=$lr \
             warmup_epochs=$warmup_epochs \
             "
         echo $lr_cmd

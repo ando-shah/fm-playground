@@ -24,3 +24,7 @@ senpamae_srf_name: rfs_sentinel2_a.npy
 # B2 -> B3 [0] (green)
 # B1 -> B2 [1] (blue)
 # B3 -> B8 [6] (NIR)
+subset:
+  train: 0.1
+  val: 0.1
+  test: -1

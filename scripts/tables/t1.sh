@@ -1,84 +1,151 @@
 #!/bin/bash
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=leonard.waldmann@tum.de
-##SBATCH --output=/home/hk-project-pai00028/tum_mhj8661/code/slurm-%A_%a.out
+#SBATCH --output=/home/hk-project-pai00028/tum_mhj8661/code/slurm-%A_%a-%x.out
 
-#SBATCH --job-name=t1
+#SBATCH --job-name=t1_senpamae
 #SBATCH --partition=accelerated
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=20        # default: 38
-#SBATCH --time=4:00:00
-#SBATCH --array=20,18
-##SBATCH --array=18-20,24-25
+#SBATCH --time=5:00:00
+#SBATCH --array=3
 
 ##### export env variables
 export $(cat /home/hk-project-pai00028/tum_mhj8661/code/fm-playground/.env) # horeka
 #####
 
 
-fastdevrun=fast
-exp_base_name=debug_norm2
+fastdevrun=no
+exp_base_name=t1_v3
 
 all_tasks=(
 
-    # m-eurosat, 0-7 (50e = 0h15 (lp))
-    'base/dinov2 linear_probe geobench_eurosat_rgb 800'
-    'base/croma_s2 linear_probe geobench_eurosat_12b 900'
-    'base/softcon_13b linear_probe geobench_eurosat_13b 900'
-    'base/anysat_s2 linear_probe geobench_eurosat_10b 900'
-    'galileo'
-    'base/senpamae linear_probe geobench_eurosat_13b 900'
-    'base/dofa linear_probe geobench_eurosat_13b 900'
-    'base/panopticon_v2 linear_probe geobench_eurosat_13b 200'
+    'base/dinov2 linear_probe spacenet1_3b 800'
 
-    # resisc45, 8-11 (50e = 1h30 (lp))
-    'base/dinov2 linear_probe resisc45 900'
-    'base/senpamae linear_probe resisc45 900'
-    'base/dofa linear_probe resisc45 900'
-    'base/panopticon_v2 linear_probe resisc45 400'
+    # m-eurosat, 0-7 (50e = 0h15 (lp)) (done)
+    # 'base/dinov2 linear_probe geobench_eurosat_rgb 800'
+    # 'base/croma_s2 linear_probe geobench_eurosat_12b 900'
+    # 'base/softcon_13b linear_probe geobench_eurosat_13b 900'
+    # 'base/anysat_s2 linear_probe geobench_eurosat_10b 100'
+    # 'base/galileo_s2 linear_probe geobench_eurosat_10b 500'
+    # 'base/senpamae linear_probe geobench_eurosat_13b 500'
+    # 'base/dofa linear_probe geobench_eurosat_13b 800'
+    # 'base/panopticon_v3 linear_probe geobench_eurosat_13b 200'
 
-    # benv2-s1, 12-17
-    'base/croma_s1 linear_probe benv2_s1 900'
-    'base/softcon_2b linear_probe benv2_s1 900'
-    'base/anysat_s1_asc linear_probe benv2_s1 900'
-    'galileo'
-    'base/dofa linear_probe benv2_s1 900'
-    'base/panopticon_v2 linear_probe benv2_s1 400'
+    # resisc45, 8-12 (50e = 1h30 (lp)) (done)
+    # 'base/dinov2 linear_probe resisc45 900'
+    # 'base/anysat_spot linear_probe resisc45 100' # beeds ~3h
+    # 'base/senpamae linear_probe resisc45 900'
+    # 'base/dofa linear_probe resisc45 900'
+    # 'base/panopticon_v3 linear_probe resisc45 400'
 
-    # benv2-s2, 18-25
-    'base/dinov2 linear_probe benv2_rgb 900'
-    'base/croma_s2 linear_probe benv2_s2_12b 900'
-    'base/softcon_13b linear_probe benv2_s2_13b 800'
-    'base/anysat_s2 linear_probe benv2_s2_10b 900'
-    'galileo'
-    'base/senpamae linear_probe benv2_s2_4b 900'
-    'base/dofa linear_probe benv2_s2_12b 900'
-    'base/panopticon_v2 linear_probe benv2_s2_12b 200'
-
-    # forestnet, 26-31
-    'base/dinov2 linear_probe geobench_forestnet_rgb 900'
-    'base/anysat landsat???'
-    'galileo'
-    'base/senpamae linear_probe geobench_forestnet_6b 900'
-    'base/dofa linear_probe geobench_forestnet_6b 900'
-    'base/panopticon_v2 linear_probe geobench_forestnet_6b 200'
-
-    # fmow-wv, 32-34
-    'base/senpamae linear_probe fmow_8b 900'
-    'base/dofa linear_probe fmow_8b'
-    'base/panopticon_v2 linear_probe fmow_8b'
+    # benv2-s1, 13-18
+    # 'base/croma_s1 linear_probe benv2_s1 900'
+    # 'base/softcon_2b linear_probe benv2_s1 900'
+    'base/anysat_s1-asc linear_probe benv2_s1 100' # needs ~12h (TODO)
+    # 'base/galileo_s1 linear_probe benv2_s1 100' # TODO
+    # 'base/dofa linear_probe benv2_s1 500'
+    # 'base/panopticon_v3 linear_probe benv2_s1 400'
 
 
-    # # corine-sd (previous t1)
-    # 'base/dofa linear_probe corine_sd 900'
-    # 'base/panopticon_v2 linear_probe corine_sd 200'
-    # # 'base/senpamae linear_probe corine_sd_4b 900'
+    # benv2-s2, 19-26 (50e = ~4h)
+    # 'base/dinov2 linear_probe benv2_rgb 900'
+    # 'base/croma_s2 linear_probe benv2_s2_12b 900'
+    # 'base/softcon_13b linear_probe benv2_s2_13b 800'
+    'base/softcon_13b linear_probe benv2_s2_13b_scnorm 800'
+    'base/anysat_s2 linear_probe benv2_s2_10b 100' # TODO
+    # 'base/galileo_s2 linear_probe benv2_s2_10b 200'
+    'base/senpamae linear_probe benv2_s2_12b 300' # TODO
+    # 'base/dofa linear_probe benv2_s2_12b 500'
+    # 'base/panopticon_v3 linear_probe benv2_s2_12b 200'
 
-    # # corine-21 (previous t1)
-    # 'base/dofa linear_probe corine_21b 900'
-    # 'base/panopticon_v2 linear_probe corine_21b 130'
+    # benv2-s1, softcon norm: (4-9)
+    'base/softcon_2b linear_probe benv2_s1_scnorm 900'
+    'base/softcon_13b linear_probe benv2_s2_13b_scnorm 800'
+
+    'base/panopticon_v3 linear_probe benv2_s1_scnorm 400'
+    'base/panopticon_v3 linear_probe benv2_s2_12b_scnorm 200'
+
+    'base/croma_s1 linear_probe benv2_s1_scnorm 900'
+    'base/croma_s2 linear_probe benv2_s2_12b_scnorm 900'
+
+
+    'base/anysat_s1-asc linear_probe benv2_s1_scnorm 100' # needs ~12h (TODO)
+    'base/galileo_s1 linear_probe benv2_s1_scnorm 100' # TODO
+    'base/dofa linear_probe benv2_s1_scnorm 500'
+
+    # benv2-s2, 19-26 (50e = ~4h) (10-17)
+    'base/dinov2 linear_probe benv2_rgb_scnorm 900'
+    'base/anysat_s2 linear_probe benv2_s2_10b_scnorm 100' # TODO
+    'base/galileo_s2 linear_probe benv2_s2_10b_scnorm 200'
+    'base/senpamae linear_probe benv2_s2_12b_scnorm 500' # TODO
+    'base/dofa linear_probe benv2_s2_12b_scnorm 500'
+
+    # forestnet, 27-31 (1h) (done)
+    # 'base/dinov2 linear_probe geobench_forestnet_rgb 900'
+    # 'base/anysat_naip linear_probe geobench_forestnet_4b 100'
+    # 'base/senpamae linear_probe geobench_forestnet_6b 600'
+    # 'base/dofa linear_probe geobench_forestnet_6b 900'
+    # 'base/panopticon_v3 linear_probe geobench_forestnet_6b 200'
+
+    # fmow-wv, 32-34 (50e = ~4h) 
+    # 'base/senpamae linear_probe fmow_8b 600'
+    # 'base/dofa linear_probe fmow_8b 900'
+    # 'base/panopticon_v3 linear_probe fmow_8b 200'
+    # 'base/dinov2 linear_probe fmow_8b_rgb 900'
+
+    # fmow-rgb, 35-39 (50e = ~4h) (done)
+    # 'base/dinov2 linear_probe fmow_rgb 900'
+    # 'base/anysat_spot linear_probe fmow_rgb 100'
+    # 'base/senpamae linear_probe fmow_rgb 900'
+    # 'base/dofa linear_probe fmow_rgb 900'
+    # 'base/panopticon_v3 linear_probe fmow_rgb 400'
+
+    ######################################
+    #### other geobench cls tasks
+    ######################################
+
+    # so2sat-s2 (40-47)
+    # 'base/dinov2 linear_probe geobench_so2sat_rgb 800'
+    # 'base/croma_s2 linear_probe geobench_so2sat_12b 900'
+    # 'base/softcon_13b linear_probe geobench_so2sat_13b 900'
+    # 'base/anysat_s2 linear_probe geobench_so2sat_10b 100'
+    # 'base/galileo_s2 linear_probe geobench_so2sat_10b 500'
+    # 'base/senpamae linear_probe geobench_so2sat_10b 500'
+    # 'base/dofa linear_probe geobench_so2sat_10b 800'
+    # 'base/panopticon_v3 linear_probe geobench_so2sat_10b 200'
+
+    # brik kiln (48-55)
+    # 'base/dinov2 linear_probe geobench_brick_kiln_rgb 800'
+    # 'base/croma_s2 linear_probe geobench_brick_kiln_12b 900'
+    # 'base/softcon_13b linear_probe geobench_brick_kiln_13b 900'
+    # 'base/anysat_s2 linear_probe geobench_brick_kiln_10b 100'
+    # 'base/galileo_s2 linear_probe geobench_brick_kiln_10b 500'
+    # 'base/senpamae linear_probe geobench_brick_kiln_13b 500'
+    # 'base/dofa linear_probe geobench_brick_kiln_13b 800'
+    # 'base/panopticon_v2 linear_probe geobench_brick_kiln_13b 200'
+
+    # ben-opt (56-63) (not working, but we skip these for benv2)
+    'base/dinov2 linear_probe geobench_ben_rgb 800'
+    'base/croma_s2 linear_probe geobench_ben_12b 900'
+    'base/softcon_13b linear_probe geobench_ben_13b 900'
+    'base/anysat_s2 linear_probe geobench_ben_10b 100'
+    'base/galileo_s2 linear_probe geobench_ben_10b 500'
+    'base/senpamae linear_probe geobench_ben_13b 500'
+    'base/dofa linear_probe geobench_ben_13b 800'
+    'base/panopticon_v3 linear_probe geobench_ben_13b 200'
+
+    # geobench_pv4ger_cls (64-68)
+    # 'base/dinov2 linear_probe geobench_pv4ger_cls 900'
+    # 'base/anysat_spot linear_probe geobench_pv4ger_cls 100'
+    # 'base/senpamae linear_probe geobench_pv4ger_cls 900'
+    # 'base/dofa linear_probe geobench_pv4ger_cls 900'
+    # 'base/panopticon_v3 linear_probe geobench_pv4ger_cls 400'
+
+    # so2sat-s1
+
 )
 
 
@@ -94,9 +161,9 @@ warmup_epochs=0
 ########## defaults both
 
 epochs=50
-num_workers=16
+num_workers=8
 check_val_every_n_epoch=10
-val_subset=-1
+val_subset=0.2
 
 # epochs=10
 # num_workers=12

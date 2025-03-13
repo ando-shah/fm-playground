@@ -6,7 +6,7 @@ class PanopticonWrapper(EvalModelWrapper):
 
     def _load_encoder(self, blk_indices):
         self.encoder = torch.hub.load(
-            '/home/ando/PanOpticOn',
+            '/home/hk-project-pai00028/tum_mhj8661/code/PanOpticOn',
             'panopticon_from_eval_config',
             self.model_config,
             source='local')

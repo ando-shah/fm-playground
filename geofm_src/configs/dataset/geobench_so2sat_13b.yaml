@@ -1,6 +1,6 @@
 defaults:
   - geobench
-  - s2_10b
+  - s2_13b
 
 #zero padding to 13 channels
 num_channels: 13

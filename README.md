@@ -1,8 +1,8 @@
 # Evaluation of Foundation Models for Earth Observation
 
-This repository provides tools for evaluating various foundation models on Earth Observation tasks. For detailed instructions on **pretraining and deploying [DOFA](https://arxiv.org/abs/2403.15356)**, please refer to the [main DOFA repository](https://github.com/zhu-xlab/DOFA).
+This repository contains the evaluation code of the Panopticon paper.
+The code developed from the `geofm` branch in the [DOFA-pytorch](https://github.com/xiong-zhitong/DOFA-pytorch) repository.
 
----
 
 ## Setup
 
@@ -16,27 +16,10 @@ mim install mmcv==2.1.0 mmsegmentation==1.2.2
 pip install -e .
 ```
 
-You currently do not need to install the ViT Adapter part below, as it is not used in the current version of the repository. It is optional, and relies on CUDA toolkit < 12
-
-### To use [ViT Adapter](https://arxiv.org/abs/2205.08534)
-```bash
-cd src/foundation_models/modules/ops/
-sh make.sh
-```
-
-
-### Model Weights
-Pretrained model weights are available on [Hugging Face](https://huggingface.co/XShadow/GeoFMs).
-
-#### Model Spefic Instructons
-- SenPa-MAE: The cloud storage link for the weights is [here](https://drive.google.com/file/d/1B2g1nm2oxKVgocW22nvEFkFellKZ6ATX/view?usp=sharing). Download the weights and place them in the `MODEL_WEIGHTS_DIR` directory.
-You can use `gdown <UID>` to download the weights from the google drive link (the UID is the stuff between '/d/' and '/view?usp=drive_link'). E.g. `gdown 1B2g1nm2oxKVgocW22nvEFkFellKZ6ATX`
-
 
 ### Set Up Your Environment Variables
 
-You can set this environment variable in a .env in the root directory. The variables here are automatically exported and used by different scripts, so make sure to set the following variables:
-
+You can set this environment variable in a .env in the root directory:
 ```shell
 MODEL_WEIGHTS_DIR=<path/to/your/where/you/want/to/store/weights>
 TORCH_HOME=<path/to/your/where/you/want/to/store/torch/hub/weights>
@@ -53,74 +36,30 @@ Some models depend on [torch hub](https://pytorch.org/docs/stable/hub.html#where
 for example have a single place where all weights across the models are stored, you can also change
 
 
----
 
-## Available Models
-
-This repository includes the following models for evaluation:
+## Supported Models
 
 - CROMA
-- DOFA
-- GFM
-- RemoteCLIP
-- SatMAE
-- ScaleMAE
-- Skyscript
-- SoftCON
+- SoftCon
 - AnySat
-
----
+- Galileo
+- SenPaMAE
+- DOFA
+- Panopticon
 
 ## Supported Datasets
-
-The following datasets are currently supported:
 
 - GeoBench
 - BigEarthNetV2
 - Resisc45
+- Corine
+- SpaceNet1
+- FMoW
+- HyperView
+- DigitalTyphoon
+- TropicalCyclone
 
 ---
-
-## Adding New Models and Datasets
-
-To add a new model or dataset for evaluation, follow these steps:
-
-1. **Add a Model Wrapper:**
-   - Create a new model wrapper in the [`foundation_models`](foundation_models) folder.
-   - Add the new model to `__init__.py` for integration.
-   - Register the model in [`factory.py`](factory.py) by adding its name to make it accessible via the `model_type` parameter.
-
-2. **Add a Dataset Wrapper:**
-   - Create a new dataset wrapper in the [`datasets`](datasets) folder.
-   - Register the dataset in [`factory.py`](factory.py) to ensure access.
-   
-3. **Configuration Setup:**
-   This project is using [hydra](https://hydra.cc/docs/1.3/intro/) for experiment configuation:
-
-   In the configs directory there is a subdirectory for models and dataset, where you need to add
-   a config file for the new dataset and model
-
----
-
-### Note on hydra
-
-Hydra is a powerful and flexible way for experiment configuration, however, it can be a bit confusing at the beginning, as there is now an interplay between different hierarchy levels plus environment variables. 
-
-We differentiate between three kinds of configs:
-
-- Model Config: this includes all specific variables required for a particular model
-- Dataset Config: this includes all specific variables required for a particular dataset
-- Other Config: these variables will be applied on the command line and are additional args for experiment configuration such as the output directory, number of gpus etc.
-
-Any model config parameter can always be overwritten by `model.{param_name}={something}`, similar to the dataset `dataset.{param_name}={something}`. In the `main.py` script that has the hydra decorator they will all be merged and be available under the `cfg` dictionary. For more examples, see the [hydra overwrite examples](https://hydra.cc/docs/advanced/override_grammar/basic/#basic-examples).
-
-### Note on LORA
-
-Need to explain how to run LORA
-
-### Running Unit Tests
-
-We have implemented a series of unit tests that aim to test that there are no runtime bugs. They will also be run on new PRs to check that changes are not breaking other parts. To run the tests you need to `pip install pytest`, and then from the root directory simply run `pytest tests/` which will run all tests file inside the `tests/` directory, or run `pytest tests/test_{model_name}` for any specific unit test file in there.
 
 
 ## Running Experiments
@@ -163,15 +102,3 @@ You can use the following command to run an experiment:
 cd <path/to/this/repo>
 sh scripts/<path/to/your/experiment>.sh
 ```
-
-## Hyperparameter Tuning
-
-There is also a script included that can optimize hyperparameters with [Ray Tune](https://docs.ray.io/en/latest/tune/index.html) similar to the hydra setup above but with additional parameters for hparam tuning.
-
-The python file `generate_bash_scripts_ray_tune.py` can generate bash scripts that execute the `src/hparam_ray_hdra.py` script with optimizing the learning rate and batch size. The additonal ray relevant parameters are `cfg.ray.{something}` inside that script. Some defaults are provided, but if you need more specific control over ray tune configuration, additional ray arguments can be passed to the command line or a script with the plus sign. For more information you can see how the `generate_bash_scripts_ray_tune.py` configures an experiment.
-
----
-
-## Contributing
-
-We welcome contributions! If you'd like to add new models, datasets, or evaluation scripts, please submit a pull request, and ensure that you have tested your changes.

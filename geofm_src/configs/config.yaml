@@ -15,7 +15,7 @@ num_gpus: 1
 seed: 0
 output_dir: null
 output_dir_suffix: null
-resume: null
+resume: true
 logger: mlflow
 overwrite: false
 

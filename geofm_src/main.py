@@ -220,7 +220,8 @@ def main(cfg: DictConfig):
 
 
         # Train
-        trainer.fit(pl_task, data_module, ckpt_path=cfg.resume if cfg.resume else None)
+        ckpt_path = os.path.join(cfg.output_dir, 'checkpoints','last.ckpt')
+        trainer.fit(pl_task, data_module, ckpt_path=ckpt_path if cfg.resume else None)
 
         if cfg.trainer.get('fast_dev_run', False):
             print('No eval for fastdevrun.')

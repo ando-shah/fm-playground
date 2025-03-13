@@ -3,7 +3,7 @@ image_resolution: 224
 embed_dim: 768
 patch_size: 14
 
-run_dir: /hkfs/work/workspace/scratch/tum_mhj8661-panopticon/dino_logs/abl_a3_s2/sar/model=topdim_ds=mme
+run_dir: /data/panopticon/logs/dino_logs/horeka/v2
 
 
 segm_blk_indices: [3, 5, 7, 11]

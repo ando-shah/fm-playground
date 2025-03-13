@@ -75,6 +75,22 @@ all_tasks=(
     "base/panopticon_v3 knn fmow_s2 fmow_4b 400 ${train_perc}"
     "base/dofa knn fmow_s2 fmow_4b 1000 ${train_perc}"
     "base/senpamae knn fmow_s2 fmow_4b 400 ${train_perc}"
+
+    #panopticon-chnsim: 27 to 35
+    "base/panopticon-chnsim linear_probe fmow_8b fmow_8b 350 ${train_perc}"
+    "base/panopticon-chnsim linear_probe fmow_4b fmow_4b 350 ${train_perc}"
+    "base/panopticon-chnsim linear_probe fmow_s2 fmow_s2 300 ${train_perc}"
+
+    "base/panopticon-chnsim linear_probe fmow_8b fmow_4b 400 ${train_perc}"
+    "base/panopticon-chnsim linear_probe fmow_8b fmow_s2 350 ${train_perc}"
+
+    "base/panopticon-chnsim linear_probe fmow_4b fmow_8b 400 ${train_perc}"
+    "base/panopticon-chnsim linear_probe fmow_4b fmow_s2 300 ${train_perc}"
+    
+    "base/panopticon-chnsim linear_probe fmow_s2 fmow_8b 300 ${train_perc}"
+    "base/panopticon-chnsim linear_probe fmow_s2 fmow_4b 300 ${train_perc}"
+
+    
     
 
     #BENv2: 10%

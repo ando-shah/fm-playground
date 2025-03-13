@@ -32,11 +32,12 @@ eurosat_train_percent=1.0
 accel_cls_blk_indices="[10,11]"
 last_n_blocks="[1]"
 
-bsz_softcon=2000
-bsz_croma=2000
-bsz_dofa=2000
-bsz_panopticon=230
-bsz_galileo=650
+bsz_softcon=1000
+bsz_croma=1300
+bsz_dofa=1800
+bsz_panopticon=200
+bsz_galileo=550
+bsz_anysat=80
 
 all_tasks=(
 
@@ -49,9 +50,9 @@ all_tasks=(
 
 
     # Baselines: s2 -> 5 to 9
-    "base/panopticon_v3 linear_probe benv2_s2_12b benv2_s2_12b $bsz_panopticon ${benv2_train_percent}" #REDO
-    "base/dofa linear_probe benv2_s2_12b benv2_s2_12b $bsz_dofa ${benv2_train_percent}" #REDO
-    "base/croma_s2 linear_probe benv2_s2_12b benv2_s2_12b $bsz_croma ${benv2_train_percent}" #REDO
+    "base/panopticon_v3 null linear_probe benv2_s2_12b benv2_s2_12b $bsz_panopticon ${benv2_train_percent}" #REDO
+    "base/dofa null linear_probe benv2_s2_12b benv2_s2_12b $bsz_dofa ${benv2_train_percent}" #REDO
+    "base/croma_s2 null linear_probe benv2_s2_12b benv2_s2_12b $bsz_croma ${benv2_train_percent}" #REDO
     "base/galileo_s2_120 null linear_probe benv2_s2_10b benv2_s2_10b $bsz_galileo ${benv2_train_percent}" #REDO
     "base/softcon_13b null linear_probe benv2_s2_13b_scnorm benv2_s2_13b_scnorm $bsz_softcon ${benv2_train_percent}" #REDO
 
@@ -69,6 +70,17 @@ all_tasks=(
     "base/galileo_s2_120 base/galileo_s1_120 linear_probe benv2_s2_10b benv2_s1 $bsz_galileo ${benv2_train_percent}"
     "base/softcon_13b base/softcon_2b linear_probe benv2_s2_13b_scnorm benv2_s1_scnorm $bsz_softcon ${benv2_train_percent}"
 
+    #anysat all combinations: 20 to 24
+    "base/anysat_s1-asc null linear_probe benv2_s1 benv2_s1 $bsz_anysat ${benv2_train_percent}"
+    "base/anysat_s2 null linear_probe benv2_s2_10b benv2_s2_10b $bsz_anysat ${benv2_train_percent}"
+    "base/anysat_s1-asc base/anysat_s2 linear_probe benv2_s1 benv2_s2_10b $bsz_anysat ${benv2_train_percent}"
+    "base/anysat_s2 base/anysat_s1-asc linear_probe benv2_s2_10b benv2_s1 $bsz_anysat ${benv2_train_percent}"
+
+    #panopticon-chnsim: 25 to 28
+    "base/panopticon-chnsim null linear_probe benv2_s1 benv2_s1 $bsz_panopticon ${benv2_train_percent}"
+    "base/panopticon-chnsim null linear_probe benv2_s2_12b benv2_s2_12b $bsz_panopticon ${benv2_train_percent}"
+    "base/panopticon-chnsim null linear_probe benv2_s1 benv2_s2_12b $bsz_panopticon ${benv2_train_percent}"
+    "base/panopticon-chnsim null linear_probe benv2_s2_12b benv2_s1 $bsz_panopticon ${benv2_train_percent}"
     
 )
 

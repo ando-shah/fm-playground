@@ -3,7 +3,6 @@
 This repository contains the evaluation code of the Panopticon paper.
 The code developed from the `geofm` branch in the [DOFA-pytorch](https://github.com/xiong-zhitong/DOFA-pytorch) repository. The code in `geofm/engine/accelerated` is from [DINOv2](https://github.com/facebookresearch/dinov2) with minor adjustments.
 
-
 ## Setup
 
 Navigate into the root directory of this repository and do
@@ -79,22 +78,4 @@ python geofm_src/main.py \
    trainer.check_val_every_n_epoch=1 \
    +optim=sgd \
    seed=21 \
-```
-
-
-The model and dataset arguments are the names of the config.yaml files specified under the `src/configs` directory. Additional arguments can be passed to the command: basically, anything in `src/main.py` that has `cfg.{something}` passing the argument with the command line command will overwrite the configs with the dedicated values.
-
-There is a convenience script for generating such shell scripts for running experiments. 
-
-```bash
-scripts/generate_bash_scripts.py
-```
-
-You can modify this to your needs and it will generate a different shell script for every experiment you want to run stored in their own folders under `scripts/<dataset>/run_<model>_<dataset>.sh`
-
-
-You can use the following command to run an experiment:
-```bash
-cd <path/to/this/repo>
-sh scripts/<path/to/your/experiment>.sh
 ```
